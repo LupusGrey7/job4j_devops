@@ -56,4 +56,21 @@ pipeline {
             }
         }
     }
+    post {
+       always {
+           script {
+               def buildInfo = "Build number: ${currentBuild.number}\n" +
+                                "Build status: ${currentBuild.currentResult}\n" +
+                                "Started at: ${new Date(currentBuild.startTimeInMillis)}\n" +
+                                "Duration so far: ${currentBuild.durationString}"
+               telegramSend(message: buildInfo)
+           }
+       }
+       success {
+           echo "Build succeeded!"
+       }
+       failure {
+           echo "Build failed!"
+       }
+    }   
 }
