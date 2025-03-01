@@ -66,7 +66,7 @@ pipeline {
                telegramSend(message: buildInfo)
            }
        }
-       success {
+       success { //do this on success!
            echo "Build succeeded!"
        }
        failure {
