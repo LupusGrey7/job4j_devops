@@ -56,7 +56,7 @@ pipeline {
             }
         }
     }
-    post {
+    post { //this is post bloc for telegramm
        always {
            script {
                def buildInfo = "Build number: ${currentBuild.number}\n" +
