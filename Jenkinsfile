@@ -63,7 +63,17 @@ pipeline {
                                 "Build status: ${currentBuild.currentResult}\n" +
                                 "Started at: ${new Date(currentBuild.startTimeInMillis)}\n" +
                                 "Duration so far: ${currentBuild.durationString}"
-               telegramSend(message: buildInfo)
+               // Используем Credentials для токена и Chat ID
+                withCredentials([
+                    string(credentialsId: 'telegram-bot-token', variable: 'TELEGRAM_BOT_TOKEN'),
+                    string(credentialsId: 'telegram-chat-id', variable: 'TELEGRAM_CHAT_ID')
+                ]) {
+                    telegramSend(
+                        chatId: "${TELEGRAM_CHAT_ID}",  // Chat ID из Credentials
+                        message: buildInfo,
+                        tokenCredentialId: 'telegram-bot-token'  // Токен из Credentials
+                    )
+                }
            }
        }
        success { //do this on success!
