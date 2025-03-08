@@ -71,7 +71,7 @@ pipeline {
                     telegramSend(
                         chatId: "${TELEGRAM_CHAT_ID}",  // Chat ID из Credentials
                         message: buildInfo,
-                        tokenCredentialId: 'telegram-bot-token'  // Токен из Credentials
+                        token: "${TELEGRAM_BOT_TOKEN}"  // Токен из Credentials
                     )
                 }
            }
