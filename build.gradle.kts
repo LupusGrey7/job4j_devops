@@ -1,10 +1,10 @@
 plugins {
-	checkstyle
-	java
-	jacoco
-	id("org.springframework.boot") version "3.4.0"
-	id("io.spring.dependency-management") version "1.1.6"
-    id("com.github.spotbugs") version "6.0.26"
+    checkstyle
+    java
+    jacoco
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
+    alias(libs.plugins.spotbugs)
 }
 
 group = "ru.job4j.devops"
@@ -33,18 +33,19 @@ tasks.jacocoTestCoverageVerification {
 }
 
 repositories {
-	mavenCentral()
+    mavenCentral()
 }
 
 dependencies {
-	compileOnly("org.projectlombok:lombok:1.18.36")
-	annotationProcessor("org.projectlombok:lombok:1.18.36")
-	implementation("org.springframework.boot:spring-boot-starter-web")
-	testImplementation("org.springframework.boot:spring-boot-starter-test")
-	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-	testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
-	testImplementation("org.assertj:assertj-core:3.24.2")
+    compileOnly(libs.lombok)
+    annotationProcessor(libs.lombok)
+    implementation(libs.spring.boot.starter.web)
+    testImplementation(libs.spring.boot.starter.test)
+    testRuntimeOnly(libs.junit.platform.launcher)
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.assertj.core)
 }
+
 
 tasks.withType<Test> {
 	useJUnitPlatform()
