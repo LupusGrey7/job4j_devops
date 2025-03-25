@@ -4,7 +4,7 @@ plugins {
     jacoco
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
-    alias(libs.plugins.spotbugs)
+    alias(libs.plugins.spotbugs) //Подключение SpotBugs для статического анализа кода
 }
 
 group = "ru.job4j.devops"
