@@ -40,10 +40,10 @@ dependencies {
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
     implementation(libs.spring.boot.starter.web)
-    testImplementation(libs.spring.boot.starter.test)
-    testRuntimeOnly(libs.junit.platform.launcher)
-    testImplementation(libs.junit.jupiter)
-    testImplementation(libs.assertj.core)
+
+    // Тестовые зависимости
+    testImplementation(libs.spring.boot.starter.test) // Включает JUnit и AssertJ
+    testImplementation(libs.assertj.core)             // Явное указание (если нужно)
 }
 
 
@@ -71,4 +71,25 @@ tasks.spotbugsMain {
 
 tasks.test {
     finalizedBy(tasks.spotbugsMain)
+}
+//задача для проверки размера JAR-файла
+tasks.register("checkJarSize") {
+    group = "verification"
+    description = "Checks the size of the generated JAR file."
+
+    dependsOn("jar") // Задача зависит от сборки JAR
+
+    doLast {
+        val jarFile = file("build/libs/${project.name}-${project.version}.jar") // Путь к JAR-файлу
+        if (jarFile.exists()) {
+            val sizeInMB = jarFile.length() / (1024 * 1024) // Размер в мегабайтах
+            if (sizeInMB > 5) {
+                println("WARNING: JAR file exceeds the size limit of 5 MB. Current size: ${sizeInMB} MB")
+            } else {
+                println("JAR file is within the acceptable size limit. Current size: ${sizeInMB} MB")
+            }
+        } else {
+            println("JAR file not found. Please make sure the build process completed successfully.")
+        }
+    }
 }
