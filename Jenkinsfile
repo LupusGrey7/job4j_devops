@@ -1,5 +1,13 @@
 pipeline {
     agent { label 'agent1' }
+// ➤➤➤ Добавляем блок environment для переменных кэша
+    environment {
+        // Логин/пароль из хранилища секретов Jenkins (рекомендуемый способ)
+        GRADLE_REMOTE_CACHE_USERNAME = "${env.GRADLE_REMOTE_CACHE_USERNAME}"
+        GRADLE_REMOTE_CACHE_PASSWORD = "${env.GRADLE_REMOTE_CACHE_PASSWORD}"
+        // URL кэша из системных переменных Jenkins (если задан)
+        GRADLE_REMOTE_CACHE_URL = "${env.GRADLE_REMOTE_CACHE_URL ?: 'http://192.168.0.109:5071/cache/'}"
+    }
 
     tools {
         git 'Default'
@@ -70,12 +78,19 @@ pipeline {
             steps { //шаг в Jenkins pipeline:
                 script {
                     try {
-                        sh './gradlew clean build --build-cache --refresh-dependencies -x test' // Пропускаем тесты, так как они уже выполнены
-                        telegramSend(message: "✅ Build SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}\n" +
-                                            "View build: ${env.BUILD_URL}")
+                        sh '''
+                             ./gradlew clean build \
+                             --build-cache \
+                             --refresh-dependencies \
+                             --info \
+                             -x test \
+                             -Dgradle.cache.remote.url=$GRADLE_REMOTE_CACHE_URL \
+                             -Dgradle.cache.remote.username=$GRADLE_REMOTE_CACHE_USERNAME \
+                             -Dgradle.cache.remote.password=$GRADLE_REMOTE_CACHE_PASSWORD
+                        '''
+                        telegramSend(message: "✅ Build SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}\nView build: ${env.BUILD_URL}")
                     } catch (e) {
-                        telegramSend(message: "❌ Build FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}\n" +
-                                            "View build: ${env.BUILD_URL}")
+                        telegramSend(message: "❌ Build FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}\nView build: ${env.BUILD_URL}")
                         error "Build failed"
                     }
                 }
