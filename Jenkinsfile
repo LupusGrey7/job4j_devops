@@ -13,82 +13,102 @@ pipeline {
                 }
             }
         }
-        stage('Checkstyle Main') {
+
+        stage('Checkstyle') {
             steps {
                 script {
-                    sh './gradlew checkstyleMain'
+                    try {
+                        sh './gradlew checkstyleMain checkstyleTest'
+                    } catch (e) {
+                        telegramSend(message: "Checkstyle FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
+                        error "Checkstyle failed"
+                    }
                 }
             }
         }
-        stage('Checkstyle Test') {
-            steps {
-                script {
-                    sh './gradlew checkstyleTest'
-                }
-            }
-        }
+
         stage('Compile') {
             steps {
                 script {
-                    sh './gradlew compileJava'
+                    try {
+                        sh './gradlew compileJava'
+                    } catch (e) {
+                        telegramSend(message: "Compilation FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
+                        error "Compilation failed"
+                    }
                 }
             }
         }
+
         stage('Test') {
             steps {
                 script {
-                    sh './gradlew test'
-                }
-            }
-        }
-        stage('JaCoCo Report') {
-            steps {
-                script {
-                    sh './gradlew jacocoTestReport'
-                }
-            }
-        }
-        stage('JaCoCo Verification') {
-            steps {
-                script {
-                    sh './gradlew jacocoTestCoverageVerification'
-                }
-            }
-        }
-        stages {
-                stage('Build') {
-                    steps {
-                        script {
-                            try {
-                                sh './gradlew build --build-cache'
-                                telegramSend(message: "Build SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
-                            } catch (e) {
-                                telegramSend(message: "Build FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
-                                error "Build failed"
-                            }
-                        }
+                    try {
+                        sh './gradlew test'
+                    } catch (e) {
+                        telegramSend(message: "Tests FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
+                        error "Tests failed"
                     }
                 }
+            }
         }
 
+        stage('Code Coverage') {
+            steps {
+                script {
+                    try {
+                        sh './gradlew jacocoTestReport jacocoTestCoverageVerification'
+                    } catch (e) {
+                        telegramSend(message: "Code coverage FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
+                        error "Code coverage failed"
+                    }
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                script {
+                    try {
+                        sh './gradlew build --build-cache -x test' // Пропускаем тесты, так как они уже выполнены
+                        telegramSend(message: "✅ Build SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}\n" +
+                                            "View build: ${env.BUILD_URL}")
+                    } catch (e) {
+                        telegramSend(message: "❌ Build FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}\n" +
+                                            "View build: ${env.BUILD_URL}")
+                        error "Build failed"
+                    }
+                }
+            }
+        }
     }
-    post { //this is post bloc for telegramm
-       always {
-           script {
-               def buildInfo = "Build number: ${currentBuild.number}\n" +
-                                "Build status: ${currentBuild.currentResult}\n" +
-                                "Started at: ${new Date(currentBuild.startTimeInMillis)}\n" +
-                                "Duration so far: ${currentBuild.durationString}"
-               telegramSend(
-                    message: buildInfo  // Сообщение для отправки
-                )
-           }
-       }
-       success { //do this on success!
-           echo "Build succeeded!"
-       }
-       failure { //to failure
-           echo "Build failed!"
-       }
-    }   
+
+    post { //this is post bloc for telegram
+        always {
+            script {
+                def buildInfo = "📊 Build Info:\n" +
+                               "Job: ${env.JOB_NAME}\n" +
+                               "Build #: ${currentBuild.number}\n" +
+                               "Status: ${currentBuild.currentResult}\n" +
+                               "Duration: ${currentBuild.durationString}\n" +
+                               "View build: ${env.BUILD_URL}"
+                 telegramSend(message: buildInfo)
+            }
+        }
+
+        success {
+            echo "Build succeeded!"
+            // Можно добавить дополнительные действия при успехе
+        }
+
+        failure {
+            echo "Build failed!"
+            // Можно добавить дополнительные действия при неудаче
+        }
+
+        unstable {
+            echo "Build unstable!"
+            telegramSend(message: "⚠️ Build UNSTABLE: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
+        }
+    }
 }
