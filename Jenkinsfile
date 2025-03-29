@@ -55,6 +55,22 @@ pipeline {
                 }
             }
         }
+        stages {
+                stage('Build') {
+                    steps {
+                        script {
+                            try {
+                                sh './gradlew build --build-cache'
+                                telegramSend(message: "Build SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
+                            } catch (e) {
+                                telegramSend(message: "Build FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
+                                error "Build failed"
+                            }
+                        }
+                    }
+                }
+        }
+
     }
     post { //this is post bloc for telegramm
        always {
