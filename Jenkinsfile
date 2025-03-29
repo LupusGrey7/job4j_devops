@@ -65,12 +65,12 @@ pipeline {
                 }
             }
         }
-
-        stage('Build') { // comment
-            steps {
+//--refresh-dependencies заставит Gradle перезагрузить зависимости и записать их в удалённый кэш.
+        stage('Build') {
+            steps { //шаг в Jenkins pipeline:
                 script {
                     try {
-                        sh './gradlew build --build-cache -x test' // Пропускаем тесты, так как они уже выполнены
+                        sh './gradlew clean build --build-cache --refresh-dependencies -x test' // Пропускаем тесты, так как они уже выполнены
                         telegramSend(message: "✅ Build SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}\n" +
                                             "View build: ${env.BUILD_URL}")
                     } catch (e) {

@@ -49,6 +49,7 @@ dependencies {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+    outputs.cacheIf { true } // добавим gradle кеширование для задачи
 }
 
 tasks.register<Zip>("zipJavaDoc") {
