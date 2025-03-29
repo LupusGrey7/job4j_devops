@@ -75,7 +75,7 @@ pipeline {
         }
 //--refresh-dependencies заставит Gradle перезагрузить зависимости и записать их в удалённый кэш.
         stage('Build') {
-            steps { //шаг в Jenkins pipeline:
+            steps { //шаг в Jenkins pipeline: // ➤ Добавлено опциональное условие --debug \
                 script {
                     try {
                         sh '''
@@ -83,6 +83,7 @@ pipeline {
                              --build-cache \
                              --refresh-dependencies \
                              --info \
+                             --debug \
                              -x test \
                              -Dgradle.cache.remote.url=$GRADLE_REMOTE_CACHE_URL \
                              -Dgradle.cache.remote.username=$GRADLE_REMOTE_CACHE_USERNAME \
