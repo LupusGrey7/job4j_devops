@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CalcControllerTest {
 
     @Test
-    public void whenOnePlusOneThenTwo() {
+    void whenOnePlusOneThenTwo() {
         var input = new TwoArgs(1, 1);
         var expected = new Result(2);
         var output = new CalcController().summarise(input);
@@ -19,7 +19,7 @@ class CalcControllerTest {
     }
 
     @Test
-    public void whenOnePlusTwoThenThree() {
+    void whenOnePlusTwoThenThree() {
         var input = new TwoArgs(1, 2);
         var expected = new Result(3);
         var output = new CalcController().summarise(input);
@@ -28,7 +28,7 @@ class CalcControllerTest {
     }
 
     @Test
-    public void whenNegativeNumber() {
+    void whenNegativeNumber() {
         var input = new TwoArgs(-1, -1);
         var expected = new Result(-2);
         var output = new CalcController().summarise(input);
@@ -37,7 +37,7 @@ class CalcControllerTest {
     }
 
     @Test
-    public void whenZeroPlusZero() {
+    void whenZeroPlusZero() {
         var input = new TwoArgs(0, 3);
         var expected = new Result(3);
         var output = new CalcController().summarise(input);
@@ -46,7 +46,7 @@ class CalcControllerTest {
     }
 
     @Test
-    public void whenTwoTimesTwoThenFour() {
+    void whenTwoTimesTwoThenFour() {
         var input = new TwoArgs(2, 2);
         var expected = new Result(4);
         var output = new CalcController().times(input);
@@ -55,7 +55,7 @@ class CalcControllerTest {
     }
 
     @Test
-    public void whenZeroTimesZero() {
+    void whenZeroTimesZero() {
         var input = new TwoArgs(0, 0);
         var expected = new Result(0);
         var output = new CalcController().times(input);
@@ -64,9 +64,18 @@ class CalcControllerTest {
     }
 
     @Test
-    public void whenTimesNegatives() {
+    void whenTimesNegatives() {
         var input = new TwoArgs(-3, -3);
         var expected = new Result(9);
+        var output = new CalcController().times(input);
+        assertThat(output.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(200));
+        assertThat(output.getBody()).isEqualTo(expected);
+    }
+
+    @Test
+    void whenTimesNegativesAndNullThenMinusNull() {
+        var input = new TwoArgs(-3, 0);
+        var expected = new Result(-0.0);
         var output = new CalcController().times(input);
         assertThat(output.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(200));
         assertThat(output.getBody()).isEqualTo(expected);
