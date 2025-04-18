@@ -26,7 +26,8 @@ RUN jlink \
 
 # Собираем финальное образ
 FROM debian:bookworm-slim
-ENV JAVA_HOME /user/java/jdk21
+ENV JAVA_HOME /user/java/jdk21  \
+    GRADLE_OPTS=-Dorg.gradle.daemon=false
 ENV PATH $JAVA_HOME/bin:$PATH
 
 COPY --from=builder /slim-jre $JAVA_HOME
