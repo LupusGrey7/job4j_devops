@@ -16,7 +16,10 @@ RUN jdeps --ignore-missing-deps -q \
     --multi-release 21 \
     --print-module-deps \
     --class-path 'BOOT-INF/lib/*' \
-    /job4j_devops/build/libs/DevOps-1.0.0.jar > deps.info \
+    /job4j_devops/build/libs/DevOps-1.0.0.jar > deps.info
+
+# Проверьте, что файл создан
+RUN test -f deps.info && echo "deps.info exists" || echo "deps.info missing"
 
 RUN jlink \
     --add-modules $(cat deps.info) \
@@ -29,12 +32,11 @@ RUN jlink \
 # Собираем финальное образ
 FROM debian:bookworm-slim
 # Установка переменных среды в правильном формате
-ENV JAVA_HOME /user/java/jdk21  \
-    GRADLE_OPTS=-Dorg.gradle.daemon=false
+ENV JAVA_HOME=/user/java/jdk21  \
+    GRADLE_OPTS=-"Dorg.gradle.daemon=false"
 ENV PATH $JAVA_HOME/bin:$PATH
-
 COPY --from=builder /slim-jre $JAVA_HOME
-COPY --from=builder /job4j_devops/build/libs/DevOps-1.0.0.jar .
+COPY --from=builder /job4j_devops/build/libs/*.jar  /job4j_devops/build/libs/DevOps-1.0.0.jar
 ENTRYPOINT ["java", "-jar", "DevOps-1.0.0.jar"]
 
 # Этап сборки
