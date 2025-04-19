@@ -1,6 +1,14 @@
 rootProject.name = "DevOps"
 
-//Enable cache for building Gradle on remoted server
+dependencyResolutionManagement {
+
+    // Оставляем только локальный репозиторий
+    repositories {
+        mavenCentral()
+    }
+}
+/*
+    //Enable cache for building Gradle on remoted server
 buildCache {
     local {
         isEnabled = false  // Работает в Gradle 6.6+, отключаем локальное кэширование, если не требует
@@ -17,3 +25,4 @@ buildCache {
 //        }
     }
 }
+*/

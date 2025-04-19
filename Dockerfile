@@ -9,19 +9,19 @@ WORKDIR /job4j_devops
 COPY gradle ./gradle
 COPY build.gradle.kts settings.gradle.kts gradle.properties ./
 
-# 2. Отключаем проблемный remote build cache
-RUN sed -i '/remote<HttpBuildCache>/d' settings.gradle.kts
+#  Отключаем проблемный remote build cache
+#RUN sed -i '/remote<HttpBuildCache>/d' settings.gradle.kts
 
-# 3. Скачиваем зависимости
+# 2. Скачиваем зависимости
 RUN gradle --no-daemon dependencies
 
-# 4. Копируем исходный код
+# 3. Копируем исходный код
 COPY . .
 
-# 5. Собираем проект
+# 4. Собираем проект
 RUN gradle --no-daemon clean build
 
-# 6. Анализ зависимостей для jlink (исправленный синтаксис)
+# 5. Анализ зависимостей для jlink (исправленный синтаксис)
 RUN jdeps --ignore-missing-deps -q \
     --recursive \
     --multi-release 21 \
@@ -29,7 +29,7 @@ RUN jdeps --ignore-missing-deps -q \
     --class-path 'BOOT-INF/lib/*' \
     /app/build/libs/DevOps-1.0.0.jar > deps.info
 
-# 7. Создаем slim JRE
+# 6. Создаем slim JRE
 RUN jlink \
     --add-modules $(cat deps.info),jdk.crypto.ec \
     --strip-debug \
@@ -38,7 +38,7 @@ RUN jlink \
     --no-man-pages \
     --output /slim-jre
 
-# Финальный образ
+# 7. Финальный образ
 FROM debian:bookworm-slim
 
 # 8. Исправляем переменные среды
