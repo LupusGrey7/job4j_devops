@@ -39,7 +39,7 @@ RUN cat deps.info
 
 # 7. Создаем slim JRE (исправлен java.desktop, убрано --no-locals)
 RUN jlink \
-    --add-modules $(cat deps.info),jdk.crypto.ec,java.security.jgss,java.sql,java.management,java.naming,java.desktop \
+    --add-modules $(cat deps.info),jdk.crypto.ec,java.instrument,java.security.jgss,java.sql,java.management,java.naming,java.desktop \
     --strip-debug \
     --compress 2 \
     --no-header-files \
