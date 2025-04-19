@@ -1,16 +1,31 @@
 # Этап сборки
 FROM gradle:8.11.1-jdk21 AS builder
 RUN mkdir job4j_devops
+
+# Рабочая директория
 WORKDIR /job4j_devops
+
+# Копируем файлы для зависимостей, включая папку gradle
+COPY build.gradle.kts settings.gradle.kts gradle.properties ./
+RUN gradle --no-daemon dependencies
+
+# Копируем исходный код проекта
 COPY . .
-RUN gradle clean build -x test
+RUN gradle --no-daemon build
 RUN jar xf /job4j_devops/build/libs/DevOps-1.0.0.jar
+
+# Анализ зависимостей для jlink
 RUN jdeps --ignore-missing-deps -q \
     --recursive \
     --multi-release 21 \
     --print-module-deps \
     --class-path 'BOOT-INF/lib/*' \
-    /job4j_devops/build/libs/DevOps-1.0.0.jar > deps.info
+    /job4j_devops/build/libs/DevOps-1.0.0.jar > deps.info \
+
+# Проверьте, что файл создан
+RUN test -f deps.info && echo "deps.info exists" || echo "deps.info missing"
+
+# Создаем slim JRE
 RUN jlink \
     --add-modules $(cat deps.info) \
     --strip-debug \
@@ -19,11 +34,17 @@ RUN jlink \
     --no-man-pages \
     --output /slim-jre
 
+# Собираем финальное образ
 FROM debian:bookworm-slim
+
+# Установка переменных среды в правильном формате
 ENV JAVA_HOME /user/java/jdk21
 ENV PATH $JAVA_HOME/bin:$PATH
+
+# Копируем slim JRE и приложение
 COPY --from=builder /slim-jre $JAVA_HOME
 COPY --from=builder /job4j_devops/build/libs/DevOps-1.0.0.jar .
+# Точка входа - исполнение JAR-файла
 ENTRYPOINT ["java", "-jar", "DevOps-1.0.0.jar"]
 
 
