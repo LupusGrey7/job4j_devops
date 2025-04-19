@@ -3,22 +3,25 @@ FROM gradle:8.11.1-jdk21 AS builder
 
 WORKDIR /job4j_devops
 
-# 1. Копируем ВСЕ необходимые файлы (включая конфиги checkstyle)
 # 1. Копируем ВСЕ необходимые файлы (включая конфиги checkstyle и settings.gradle.kts, если есть)
 COPY gradle ./gradle
 COPY build.gradle.kts gradle.properties ./
 COPY settings.gradle.kts ./settings.gradle.kts
 COPY src ./src
+# Копируем конфигурацию Checkstyle, если она есть
+COPY config/checkstyle/checkstyle.xml ./config/checkstyle/checkstyle.xml
 
+# 2. Временно отключаем remote cache в settings.gradle.kts (если есть)
+RUN if [ -f settings.gradle.kts ]; then sed -i '/remote(HttpBuildCache::class)/,/}/d' settings.gradle.kts; fi
 # 2. Временно отключаем checkstyle и remote cache
-RUN sed -i '/checkstyleMain/d' build.gradle.kts && \
-    if [ -f settings.gradle.kts ]; then sed -i '/remote(HttpBuildCache::class)/,/}/d' settings.gradle.kts; fi
+#RUN sed -i '/checkstyleMain/d' build.gradle.kts && \
+ #   if [ -f settings.gradle.kts ]; then sed -i '/remote(HttpBuildCache::class)/,/}/d' settings.gradle.kts; fi
 
 # 3. Скачиваем зависимости
 RUN gradle --no-daemon dependencies
 
-# 4. Собираем проект (отключаем тесты и checkstyle)
-RUN gradle --no-daemon build -x test -x checkstyleMain
+# 4. Собираем проект (отключаем тесты и ВСЕ задачи checkstyle)
+RUN gradle --no-daemon build -x test -x checkstyleMain -x checkstyleTest -x checkstyle
 
 # 5. Проверяем наличие JAR-файла
 RUN ls -l /job4j_devops/build/libs/

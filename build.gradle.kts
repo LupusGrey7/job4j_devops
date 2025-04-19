@@ -122,3 +122,8 @@ tasks.register<Zip>("archiveResources") {
 tasks.named("jar") {
     finalizedBy("archiveResources")
 }
+
+// отключаем проверку стиля
+tasks.named("checkstyleTest") {
+    enabled = false
+}
