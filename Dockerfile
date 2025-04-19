@@ -21,7 +21,7 @@ RUN if [ -f settings.gradle.kts ]; then sed -i '/remote(HttpBuildCache::class)/,
 RUN gradle --no-daemon dependencies
 
 # 4. Собираем проект (отключаем тесты и ВСЕ задачи checkstyle)
-RUN gradle --no-daemon build -x test -x checkstyleMain -x checkstyleTest -x checkstyle
+RUN gradle --no-daemon build -x test -x checkstyleMain -x checkstyleTest
 
 # 5. Проверяем наличие JAR-файла
 RUN ls -l /job4j_devops/build/libs/
