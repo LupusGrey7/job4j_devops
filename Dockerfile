@@ -34,14 +34,24 @@ RUN jdeps --ignore-missing-deps -q \
     --class-path 'BOOT-INF/lib/*' \
     /job4j_devops/build/libs/DevOps-1.0.0.jar > deps.info
 
-# 7. Создаем slim JRE (добавлены важные модули, включая java.beans)
+# 6.1. Отладка: выводим содержимое deps.info
+RUN cat deps.info
+
+# 7. Создаем slim JRE (убран java.beans, добавлен java.desktop при необходимости)
 RUN jlink \
-    --add-modules $(cat deps.info),jdk.crypto.ec,java.sql,java.management,java.naming,java.beans \
+    --add-modules $(cat deps.info),jdk.crypto.ec,java.sql,java.management,java.naming,java desktop \
     --strip-debug \
     --compress 2 \
+    --no-locals \
     --no-header-files \
     --no-man-pages \
     --output /slim-jre
+
+# 8. Проверяем наличие slim JRE
+RUN ls -l /slim-jre/bin/
+
+# 9. Проверяем наличие JAR-файла
+RUN ls -l /job4j_devops/build/libs/
 
 # Финальный образ
 FROM debian:bookworm-slim
