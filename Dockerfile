@@ -1,51 +1,57 @@
 # Этап сборки
 FROM gradle:8.11.1-jdk21 AS builder
-RUN mkdir job4j_devops
 
-# Рабочая директория
+# Создаем рабочую директорию
 WORKDIR /job4j_devops
 
-# Копируем файлы для зависимостей, включая папку gradle
+# 1. Копируем файлы конфигурации Gradle
+# Это критически важно для работы version catalogs
+COPY gradle ./gradle
 COPY build.gradle.kts settings.gradle.kts gradle.properties ./
+
+# 2. Отключаем проблемный remote build cache
+RUN sed -i '/remote<HttpBuildCache>/d' settings.gradle.kts
+
+# 3. Скачиваем зависимости
 RUN gradle --no-daemon dependencies
 
-# Копируем исходный код проекта
+# 4. Копируем исходный код
 COPY . .
-RUN gradle --no-daemon build
-RUN jar xf /job4j_devops/build/libs/DevOps-1.0.0.jar
 
-# Анализ зависимостей для jlink
+# 5. Собираем проект
+RUN gradle --no-daemon clean build
+
+# 6. Анализ зависимостей для jlink (исправленный синтаксис)
 RUN jdeps --ignore-missing-deps -q \
     --recursive \
     --multi-release 21 \
     --print-module-deps \
     --class-path 'BOOT-INF/lib/*' \
-    /job4j_devops/build/libs/DevOps-1.0.0.jar > deps.info \
+    /app/build/libs/DevOps-1.0.0.jar > deps.info
 
-# Проверьте, что файл создан
-RUN test -f deps.info && echo "deps.info exists" || echo "deps.info missing"
-
-# Создаем slim JRE
+# 7. Создаем slim JRE
 RUN jlink \
-    --add-modules $(cat deps.info) \
+    --add-modules $(cat deps.info),jdk.crypto.ec \
     --strip-debug \
     --compress 2 \
     --no-header-files \
     --no-man-pages \
     --output /slim-jre
 
-# Собираем финальное образ
+# Финальный образ
 FROM debian:bookworm-slim
 
-# Установка переменных среды в правильном формате
-ENV JAVA_HOME /user/java/jdk21
-ENV PATH $JAVA_HOME/bin:$PATH
+# 8. Исправляем переменные среды
+ENV JAVA_HOME=/opt/slim-jre
+ENV PATH="$JAVA_HOME/bin:$PATH"
 
-# Копируем slim JRE и приложение
+# 9. Копируем необходимые файлы
 COPY --from=builder /slim-jre $JAVA_HOME
-COPY --from=builder /job4j_devops/build/libs/DevOps-1.0.0.jar .
-# Точка входа - исполнение JAR-файла
-ENTRYPOINT ["java", "-jar", "DevOps-1.0.0.jar"]
+COPY --from=builder /job4j_devops/build/libs/DevOps-1.0.0.jar /job4j_devops/app.jar
+
+# 10. Настраиваем рабочую директорию
+WORKDIR /job4j_devops
+ENTRYPOINT ["java", "-jar", "app.jar"]
 
 
 # Этап сборки
