@@ -51,7 +51,7 @@ COPY --from=builder /job4j_devops/build/libs/DevOps-1.0.0.jar /job4j_devops/app.
 
 # 10. Настраиваем рабочую директорию
 WORKDIR /job4j_devops
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "DevOps-1.0.0.jar"]
 
 
 # Этап сборки
