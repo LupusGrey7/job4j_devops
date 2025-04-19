@@ -1,7 +1,9 @@
+# Этап сборки
 FROM gradle:8.11.1-jdk21 AS builder
 RUN mkdir job4j_devops
 WORKDIR /job4j_devops
 
+COPY gradle ./gradle
 COPY build.gradle.kts settings.gradle.kts gradle.properties ./
 RUN gradle --no-daemon dependencies
 
@@ -26,6 +28,7 @@ RUN jlink \
 
 # Собираем финальное образ
 FROM debian:bookworm-slim
+# Установка переменных среды в правильном формате
 ENV JAVA_HOME /user/java/jdk21  \
     GRADLE_OPTS=-Dorg.gradle.daemon=false
 ENV PATH $JAVA_HOME/bin:$PATH
@@ -34,9 +37,12 @@ COPY --from=builder /slim-jre $JAVA_HOME
 COPY --from=builder /job4j_devops/build/libs/DevOps-1.0.0.jar .
 ENTRYPOINT ["java", "-jar", "DevOps-1.0.0.jar"]
 
+# Этап сборки
 # FROM gradle:8.11.1-jdk21 -> Используем Gradle 8.11.1 и JDK 21
 # RUN mkdir -> Создаёт директорию job4j_devops внутри контейнера
 # WORKDIR ... -> Устанавливает рабочую директорию для последующих команд.
+
+# Копируем файлы для зависимостей, включая папку gradle
 # COPY ... -> Копирует все содержимое текущей директории внутрь директории job4j_devops.
 # RUN gradle... -> Запускает сборку проекта с помощью Gradle, пропуская тесты (-x test).
 # RUN jar xf ... -> Распаковывает JAR-файл внутрь директории job4j_devops (в текущую рабочую директорию контейнера.)
@@ -48,11 +54,15 @@ ENTRYPOINT ["java", "-jar", "DevOps-1.0.0.jar"]
          #--no-header-files: Исключает файлы заголовков из JRE.
          #--no-man-pages: Исключает страницы справки (man pages).
          #--output /slim-jre: Указывает директорию для вывода минимального JRE.
+
 # Собираем финальное образ --->
 # FROM  debian:bookworm-slim -> Используем базовый образ Debian 11 (bookworm) с установленным slim-jre
+
+# Установка переменных среды в правильном формате
 # ENV JAVA_HOME /user/java/jdk21 -> Устанавливает переменную окружения JAVA_HOME в /user/java/jdk21
 # ENV PATH $JAVA_HOME/bin:$PATH -> Добавляет путь к директории с JRE в переменную окружения PATH
 
+# Копируем исходный код и собираем проект
 # COPY --from=builder /slim-jre -> Копирует сжатую версию JRE из предыдущего этапа внутрь контейнера.
         #/slim-jre -> Путь к сжатой версии JRE в предыдущем этапе.
 #COPY --from=builder /job4j_devops/build/libs/DevOps-1.0.0.jar -> Копирует JAR-файл DevOps-1.0.0.jar из предыдущего этапа внутрь контейнера.
