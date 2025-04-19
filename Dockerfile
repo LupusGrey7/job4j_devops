@@ -27,7 +27,7 @@ RUN jdeps --ignore-missing-deps -q \
     --multi-release 21 \
     --print-module-deps \
     --class-path 'BOOT-INF/lib/*' \
-    /app/build/libs/DevOps-1.0.0.jar > deps.info
+    /job4j_devops/build/libs/DevOps-1.0.0.jar > deps.info
 
 # 6. Создаем slim JRE
 RUN jlink \
