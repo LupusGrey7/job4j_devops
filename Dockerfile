@@ -34,9 +34,9 @@ RUN jdeps --ignore-missing-deps -q \
     --class-path 'BOOT-INF/lib/*' \
     /job4j_devops/build/libs/DevOps-1.0.0.jar > deps.info
 
-# 7. Создаем slim JRE (добавлены важные модули)
+# 7. Создаем slim JRE (добавлены важные модули, включая java.beans)
 RUN jlink \
-    --add-modules $(cat deps.info),jdk.crypto.ec,java.sql,java.management,java.naming \
+    --add-modules $(cat deps.info),jdk.crypto.ec,java.sql,java.management,java.naming,java.beans \
     --strip-debug \
     --compress 2 \
     --no-header-files \
