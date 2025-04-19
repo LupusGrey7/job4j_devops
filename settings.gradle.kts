@@ -6,16 +6,10 @@ buildCache {
         isEnabled = false  // Работает в Gradle 6.6+, отключаем локальное кэширование, если не требует
     }
     remote(HttpBuildCache::class) {
-        // Указываем URL для удаленного кэша
-        url = uri(System.getenv("GRADLE_REMOTE_CACHE_URL") ?: "http://192.168.0.109:5071/")
+        url = uri(System.getenv("GRADLE_REMOTE_CACHE_URL") ?: "http://192.168.0.109:5071/")  // Указываем URL для удаленного кэша
         isAllowInsecureProtocol = true // Разрешить небезопасные HTTP-соединения
         isAllowUntrustedServer = true // Разрешить ненадежные серверы
         isPush = true // Разрешить запись в кэш
-        // Настройте Jenkins для анонимного доступа - мы убрали блок credentials
-//        credentials {
-//            username = System.getenv("GRADLE_REMOTE_CACHE_USERNAME") //?: ""
-//            password = System.getenv("GRADLE_REMOTE_CACHE_PASSWORD") //?: ""
-//        }
     }
 }
 
