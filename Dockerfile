@@ -1,11 +1,9 @@
 # Этап сборки
 FROM gradle:8.11.1-jdk21 AS builder
 
-# Создаем рабочую директорию
 WORKDIR /job4j_devops
 
 # 1. Копируем файлы конфигурации Gradle
-# Это критически важно для работы version catalogs
 COPY gradle ./gradle
 COPY build.gradle.kts settings.gradle.kts gradle.properties ./
 
@@ -16,12 +14,15 @@ COPY build.gradle.kts settings.gradle.kts gradle.properties ./
 RUN gradle --no-daemon dependencies
 
 # 3. Копируем исходный код
-COPY . .
+COPY src ./src
 
 # 4. Собираем проект
-RUN gradle --no-daemon clean build
+RUN gradle --no-daemon build -x test
 
-# 5. Анализ зависимостей для jlink (исправленный синтаксис)
+# 5. Проверяем наличие JAR-файла
+RUN ls -l /app/build/libs/
+
+# 6. Анализ зависимостей для jlink (исправленный синтаксис)
 RUN jdeps --ignore-missing-deps -q \
     --recursive \
     --multi-release 21 \
@@ -29,28 +30,29 @@ RUN jdeps --ignore-missing-deps -q \
     --class-path 'BOOT-INF/lib/*' \
     /job4j_devops/build/libs/DevOps-1.0.0.jar > deps.info
 
-# 6. Создаем slim JRE
+# 7. Создаем slim JRE (+ обязательные модули)
 RUN jlink \
-    --add-modules $(cat deps.info),jdk.crypto.ec \
+    --add-modules $(cat deps.info),jdk.crypto.ec,java.sql,java.management \
     --strip-debug \
     --compress 2 \
     --no-header-files \
     --no-man-pages \
     --output /slim-jre
 
-# 7. Финальный образ
+# Финальный образ
 FROM debian:bookworm-slim
 
-# 8. Исправляем переменные среды
+# 8. Настройка переменных среды
 ENV JAVA_HOME=/opt/slim-jre
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
-# 9. Копируем необходимые файлы
+# 9. Копируем необходимые файлы- JRE и приложение
 COPY --from=builder /slim-jre $JAVA_HOME
 COPY --from=builder /job4j_devops/build/libs/DevOps-1.0.0.jar /job4j_devops/app.jar
 
-# 10. Настраиваем рабочую директорию
+# 10. Настройки для запуска
 WORKDIR /job4j_devops
+EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "DevOps-1.0.0.jar"]
 
 
