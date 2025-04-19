@@ -4,11 +4,13 @@ FROM gradle:8.11.1-jdk21 AS builder
 WORKDIR /job4j_devops
 
 # 1. Копируем ВСЕ необходимые файлы (включая конфиги checkstyle)
-COPY . .
+COPY gradle ./gradle
+COPY build.gradle.kts gradle.properties ./
+COPY src ./src
 
 # 2. Временно отключаем checkstyle и remote cache
 RUN sed -i '/checkstyleMain/d' build.gradle.kts && \
-    sed -i '/remote<HttpBuildCache>/d' settings.gradle.kts
+    sed -i '/remote(HttpBuildCache::class)/,/}/d' settings.gradle.kts
 
 # 3. Скачиваем зависимости
 RUN gradle --no-daemon dependencies
@@ -16,7 +18,7 @@ RUN gradle --no-daemon dependencies
 # 4. Собираем проект (отключаем тесты и checkstyle)
 RUN gradle --no-daemon build -x test -x checkstyleMain
 
-# 5. Проверяем наличие JAR-файла (исправлен путь)
+# 5. Проверяем наличие JAR-файла
 RUN ls -l /job4j_devops/build/libs/
 
 # 6. Анализ зависимостей
