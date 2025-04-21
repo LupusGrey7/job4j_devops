@@ -20,7 +20,7 @@ RUN if [ -f settings.gradle.kts ]; then sed -i '/remote(HttpBuildCache::class)/,
 # 3. Скачиваем зависимости
 RUN gradle --no-daemon dependencies
 
-# 4. Собираем проект (отключаем тесты и ВСЕ задачи checkstyle)
+# 4. Собираем проект (отключаем тесты и checkstyle)
 RUN gradle --no-daemon build -x test -x checkstyleMain -x checkstyleTest
 
 # 5. Проверяем наличие JAR-файла
@@ -37,9 +37,9 @@ RUN jdeps --ignore-missing-deps -q \
 # 6.1. Отладка: выводим содержимое deps.info
 RUN cat deps.info
 
-# 7. Создаем slim JRE (исправлен java.desktop, убрано --no-locals)
+# 7. Создаем slim JRE с дополнительными модулями
 RUN jlink \
-    --add-modules $(cat deps.info),jdk.crypto.ec,java.instrument,java.security.jgss,java.sql,java.management,java.naming,java.desktop \
+    --add-modules $(cat deps.info),jdk.crypto.ec,java.instrument,java.security.jgss,java.sql,java.management,java.naming,java.desktop,jdk.unsupported \
     --strip-debug \
     --compress 2 \
     --no-header-files \
@@ -55,15 +55,15 @@ RUN ls -l /job4j_devops/build/libs/
 # Финальный образ
 FROM debian:bookworm-slim
 
-# 8. Настройка переменных среды (исправлен путь)
+# 8. Настройка переменных среды
 ENV JAVA_HOME=/opt/slim-jre
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
-# 9. Копируем JRE и приложение (исправлены пути)
+# 9. Копируем JRE и приложение
 COPY --from=builder /slim-jre $JAVA_HOME
 COPY --from=builder /job4j_devops/build/libs/DevOps-1.0.0.jar /job4j_devops/DevOps-1.0.0.jar
 
-# 10. Настройки для запуска (исправлен путь к JAR)
+# 10. Настройки для запуска
 WORKDIR /job4j_devops
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "DevOps-1.0.0.jar"]
