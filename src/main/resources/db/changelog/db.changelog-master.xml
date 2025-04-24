@@ -5,10 +5,14 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                             http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <include file="changeset/001-ddl-create-schema.sql"
+    <include file="changeset/20250424_001__ddl_init_schema_and_tables.sql.sql"
              author="Petr Arsentev"
              relativeToChangelogFile="true"/>
-    <include file="changeset/002-ddl-alter-table-users-add-add-columns.sql"
+    <include file="changeset/20250424_002-ddl-alter-table-users-add-columns.sql"
+             author="Petr Arsentev"
+             relativeToChangelogFile="true"/>
+
+    <include file="changeset/20250424_003-ddl-alter-table-users-add-create_date.sql"
              author="Petr Arsentev"
              relativeToChangelogFile="true"/>
 
