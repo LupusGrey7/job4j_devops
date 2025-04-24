@@ -40,10 +40,15 @@ dependencies {
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
     implementation(libs.spring.boot.starter.web)
+    implementation(libs.spring.boot.starter.data.jpa)
+    implementation(libs.liquibase.core)
+    implementation(libs.postgresql)
 
     // Тестовые зависимости
     testImplementation(libs.spring.boot.starter.test) // Включает JUnit и AssertJ
     testImplementation(libs.assertj.core)             // Явное указание (если нужно)
+    testImplementation(libs.h2)                        // Включает H2 для тестов
+
 }
 
 

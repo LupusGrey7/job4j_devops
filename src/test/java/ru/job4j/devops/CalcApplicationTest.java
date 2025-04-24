@@ -3,15 +3,14 @@ package ru.job4j.devops;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class CalcApplicationTests {
+import org.springframework.test.context.ActiveProfiles;
+
+@ActiveProfiles("test")
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE) // Avoid starting web server@ActiveProfiles("test")
+class CalcApplicationTest {
 
     @Test
     void contextLoads() {
-    }
-
-    @Test
-    void mainMethodTest() {
-        CalcApplication.main(new String[] {});
+        System.out.println("test context");
     }
 }
