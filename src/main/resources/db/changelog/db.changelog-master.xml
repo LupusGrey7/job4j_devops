@@ -8,4 +8,8 @@
     <include file="changeset/001-create-schema.sql"
              author="Petr Arsentev"
              relativeToChangelogFile="true"/>
+    <include file="changeset/002-ddl-alter-table-items-add-checked-column.sql"
+             author="Petr Arsentev"
+             relativeToChangelogFile="true"/>
+
 </databaseChangeLog>
