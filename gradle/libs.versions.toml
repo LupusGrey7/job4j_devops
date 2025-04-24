@@ -8,6 +8,11 @@ junit-jupiter = "5.10.0"
 assertj = "3.24.2"
 junit-platform = "1.10.0"
 liquibase-core = "4.30.0"
+liquibase-gradle = "3.0.1"
+jaxb-api = "2.3.1"
+logback-core = "1.5.15"
+logback-classic = "1.5.15"
+picocli = "4.6.1"
 postgresql = "42.7.4"
 h2 = "2.2.224" # Latest H2 version as of April 2025
 
@@ -20,6 +25,10 @@ junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.r
 assertj-core = { group = "org.assertj", name = "assertj-core", version.ref = "assertj" }
 junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher", version.ref = "junit-platform" }
 liquibase-core = { group = "org.liquibase", name = "liquibase-core", version.ref = "liquibase-core" }
+jaxb-api = { group = "javax.xml.bind", name = "jaxb-api", version.ref = "jaxb-api"}
+logback-core = { group = "ch.qos.logback", name = "logback-core", version.ref = "logback-core"}
+logback-classic = { group = "ch.qos.logback", name = "logback-classic", version.ref = "logback-classic"}
+picocli = { group = "info.picocli", name = "picocli", version.ref = "picocli"}
 postgresql = { group = "org.postgresql", name = "postgresql", version.ref = "postgresql" }
 h2 = { module = "com.h2database:h2", version.ref = "h2" }
 
@@ -30,3 +39,4 @@ h2 = { module = "com.h2database:h2", version.ref = "h2" }
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
 spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
 spotbugs = { id = "com.github.spotbugs", version.ref = "spotbugs" }
+liquibase = { id = "org.liquibase.gradle", version.ref = "liquibase-gradle" }

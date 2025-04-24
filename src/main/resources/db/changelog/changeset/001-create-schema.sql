@@ -6,8 +6,8 @@ CREATE SCHEMA IF NOT EXISTS public;
 --changeset petrarsentev:drop_users runAlways:true context:dev,test
 -- Drop in test/dev to recreate schema easily
 DROP SEQUENCE IF EXISTS public.hibernate_sequence;
-DROP TABLE IF EXISTS public.users;
-DROP TABLE IF EXISTS public.roles;
+DROP TABLE IF EXISTS public.users CASCADE;
+DROP TABLE IF EXISTS public.roles CASCADE;
 
 --changeset petrarsentev:create_sequence
 CREATE SEQUENCE IF NOT EXISTS public.hibernate_sequence
