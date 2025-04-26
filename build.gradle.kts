@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.spotbugs) //Подключение SpotBugs для статического анализа кода
     alias(libs.plugins.liquibase)
     alias(libs.plugins.dotenv) // Подключаем плагин dotenv - для работы с переменными окружения
-  //  id("co.uzzu.dotenv.gradle") version "4.0.0"
+    //  id("co.uzzu.dotenv.gradle") version "4.0.0"
 }
 
 group = "ru.job4j.devops"
@@ -115,9 +115,15 @@ tasks.jacocoTestCoverageVerification {
     }
 }
 
+// Эта конфигурация применяется ко всем задачам типа Test(включая test, integrationTest и другие)
 tasks.withType<Test> {
-    useJUnitPlatform()
-    outputs.cacheIf { true } // добавим gradle кеширование для задачи
+//    useJUnitPlatform()
+//    outputs.cacheIf { true } // Включаем кеширование для тестов
+
+    // Устанавливаем системные свойства для подключения к БД
+    systemProperty("spring.datasource.url", env.DB_URL.value)
+    systemProperty("spring.datasource.username", env.DB_USERNAME.value)
+    systemProperty("spring.datasource.password", env.DB_PASSWORD.value)
 }
 
 tasks.register<Zip>("zipJavaDoc") {
@@ -138,8 +144,9 @@ tasks.spotbugsMain {
         outputLocation.set(layout.buildDirectory.file("reports/spotbugs/spotbugs.html"))
     }
 }
-
+// Эта конфигурация применяется только к конкретной задаче test
 tasks.test {
+    // Запускает spotbugsMain после завершения тестов
     finalizedBy(tasks.spotbugsMain)
 }
 

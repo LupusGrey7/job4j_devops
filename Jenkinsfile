@@ -7,12 +7,13 @@ pipeline {
         GRADLE_REMOTE_CACHE_PASSWORD = "${env.GRADLE_REMOTE_CACHE_PASSWORD}"
         // URL кэша из системных переменных Jenkins (если задан)
         GRADLE_REMOTE_CACHE_URL = "${env.GRADLE_REMOTE_CACHE_URL ?: 'http://192.168.0.109:5071/cache/'}"
+        DOTENV_FILE = "/var/agent-jdk21/env/.env.develop"
     }
 
     tools {
         git 'Default'
     }
-
+// ➤➤➤ Добавляем блок stages
     stages {
         stage('Prepare Environment') {
             steps {
@@ -26,7 +27,7 @@ pipeline {
             steps {
                 script {
                     try {
-                        sh './gradlew checkstyleMain checkstyleTest'
+                        sh "./gradlew checkstyleMain checkstyleTest -P\"dotenv.filename\"=\"${DOTENV_FILE}\""
                     } catch (e) {
                         telegramSend(message: "Checkstyle FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
                         error "Checkstyle failed"
@@ -39,7 +40,7 @@ pipeline {
             steps {
                 script {
                     try {
-                        sh './gradlew compileJava'
+                         sh "./gradlew compileJava -P\"dotenv.filename\"=\"${DOTENV_FILE}\""
                     } catch (e) {
                         telegramSend(message: "Compilation FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
                         error "Compilation failed"
@@ -52,7 +53,7 @@ pipeline {
             steps {
                 script {
                     try {
-                        sh './gradlew test'
+                        sh "./gradlew test -P\"dotenv.filename\"=\"${DOTENV_FILE}\""
                     } catch (e) {
                         telegramSend(message: "Tests FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
                         error "Tests failed"
@@ -65,7 +66,7 @@ pipeline {
             steps {
                 script {
                     try {
-                        sh './gradlew jacocoTestReport jacocoTestCoverageVerification'
+                        sh "./gradlew jacocoTestReport jacocoTestCoverageVerification -P\"dotenv.filename\"=\"${DOTENV_FILE}\""
                     } catch (e) {
                         telegramSend(message: "Code coverage FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
                         error "Code coverage failed"
@@ -73,7 +74,7 @@ pipeline {
                 }
             }
         }
-//--refresh-dependencies заставит Gradle перезагрузить зависимости и записать их в удалённый кэш.
+// refresh-dependencies заставит Gradle перезагрузить зависимости и записать их в удалённый кэш.
         stage('Build') {
             steps { //шаг в Jenkins pipeline: // ➤ Добавлено опциональное условие --debug \
                 script {
@@ -85,6 +86,7 @@ pipeline {
                              --info \
                              --debug \
                              -x test \
+                             -P\"dotenv.filename\"=\"${DOTENV_FILE}\" \
                              -Dgradle.cache.remote.url=$GRADLE_REMOTE_CACHE_URL \
                              -Dgradle.cache.remote.username=$GRADLE_REMOTE_CACHE_USERNAME \
                              -Dgradle.cache.remote.password=$GRADLE_REMOTE_CACHE_PASSWORD
@@ -97,9 +99,17 @@ pipeline {
                 }
             }
         }
+// ➤➤➤ добавим новый этап, который будет загружать данные в базу:
+        stage('Update DB') {
+            steps {
+                script {
+                    sh './gradlew update -P"dotenv.filename"="/var/agent-jdk21/env/.env.develop"'
+                }
+            }
+        }
     }
-
-    post { //this is post bloc for telegram
+// ➤➤➤ Добавляем блок post для отправки уведомлений в Telegram
+    post {
         always {
             script {
                 def buildInfo = "📊 Build Info:\n" +
