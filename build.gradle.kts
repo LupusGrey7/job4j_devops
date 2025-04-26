@@ -6,11 +6,93 @@ plugins {
     alias(libs.plugins.spring.dependency.management)
     alias(libs.plugins.spotbugs) //Подключение SpotBugs для статического анализа кода
     alias(libs.plugins.liquibase)
+    alias(libs.plugins.dotenv) // Подключаем плагин dotenv - для работы с переменными окружения
+  //  id("co.uzzu.dotenv.gradle") version "4.0.0"
 }
 
 group = "ru.job4j.devops"
 version = "1.0.0"
 
+// Устанавливаем переменную окружения, если она не задана явно
+val activeEnv = System.getenv("ENV") ?: "local"
+val envFile = file("env/.env.$activeEnv")
+//val dotEnvTarget = file(".env")
+
+// Копируем нужный .env файл из папки env в корень проекта
+tasks.register<Copy>("prepareDotEnv") {
+    group = "prepareDotEnv"
+    description = "Копируем нужный .env файл из папки env в корень проекта"
+
+    from(envFile)
+    into(layout.buildDirectory.dir("dotEnv"))
+    rename { ".env" }
+    doNotTrackState("We want this task to skip tracking file state for Gradle 8+ compatibility.")
+}
+
+tasks.named("processResources") {
+    dependsOn("prepareDotEnv")
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    //Core
+    implementation(libs.spring.boot.starter.web)
+    implementation(libs.spring.boot.starter.data.jpa)
+
+    // Liquibase
+    implementation(libs.liquibase.core)
+    implementation(libs.postgresql)
+    add("liquibaseRuntime", libs.liquibase.core)
+    add("liquibaseRuntime", libs.postgresql)
+    add("liquibaseRuntime", libs.jaxb.api)
+    add("liquibaseRuntime", libs.logback.core)
+    add("liquibaseRuntime", libs.logback.classic)
+    add("liquibaseRuntime", libs.picocli)
+
+    // Lombok
+    compileOnly(libs.lombok)
+    annotationProcessor(libs.lombok)
+
+    // Тестовые зависимости
+    testImplementation(libs.spring.boot.starter.test) // Включает JUnit и AssertJ
+    testImplementation(libs.assertj.core)             // Явное указание (если нужно)
+    testImplementation(libs.h2)                        // Включает H2 для тестов
+}
+
+// Liquibase конфигурация с переменными из .env
+// Liquibase runtime dependencies (настроим профиль для Liquibase)+ добавили ENV из файла .env.local для локального окружения (пример "DB_USERNAME")
+liquibase {
+    activities.register("main") {
+
+        val dbUrl = env.DB_URL.value
+        val dbUsername = env.DB_USERNAME.value
+        val dbPassword = env.DB_PASSWORD.value
+
+        this.arguments = mapOf(
+            "logLevel" to "info",
+            "url" to dbUrl,
+            "username" to dbUsername,
+            "password" to dbPassword,
+            "classpath" to "src/main/resources",
+            "changelogFile" to "db/changelog/db.changelog-master.xml"
+        )
+    }
+    runList = "main"
+}
+
+//buildscript -  Liquibase
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.liquibase:liquibase-core:4.30.0")
+    }
+}
+// Проверка покрытия
 tasks.jacocoTestCoverageVerification {
     violationRules {
         rule {
@@ -31,63 +113,6 @@ tasks.jacocoTestCoverageVerification {
             }
         }
     }
-}
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    //Core
-    implementation(libs.spring.boot.starter.web)
-    implementation(libs.spring.boot.starter.data.jpa)
-    // Liquibase
-    implementation(libs.liquibase.core)
-    implementation(libs.postgresql)
-    // Lombok
-    compileOnly(libs.lombok)
-    annotationProcessor(libs.lombok)
-
-    // Тестовые зависимости
-    testImplementation(libs.spring.boot.starter.test) // Включает JUnit и AssertJ
-    testImplementation(libs.assertj.core)             // Явное указание (если нужно)
-    testImplementation(libs.h2)                        // Включает H2 для тестов
-
-}
-
-// Liquibase
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath("org.liquibase:liquibase-core:4.30.0")
-    }
-}
-
-// Liquibase runtime dependencies (настроим профиль для Liquibase)
-liquibase {
-    activities.register("main") {
-        this.arguments = mapOf(
-            "logLevel" to "info",
-            "url" to "jdbc:postgresql://localhost:5432/job4j_devops",
-            "username" to "postgres",
-            "password" to "password",
-            "classpath" to "src/main/resources",
-            "changelogFile" to "db/changelog/db.changelog-master.xml"
-        )
-    }
-    runList = "main"
-}
-
-dependencies {
-    add("liquibaseRuntime", libs.liquibase.core)
-    add("liquibaseRuntime", libs.postgresql)
-    add("liquibaseRuntime", libs.jaxb.api)
-    add("liquibaseRuntime", libs.logback.core)
-    add("liquibaseRuntime", libs.logback.classic)
-    add("liquibaseRuntime", libs.picocli)
-
 }
 
 tasks.withType<Test> {
@@ -166,7 +191,43 @@ tasks.named("jar") {
     finalizedBy("archiveResources")
 }
 
-// отключаем проверку стиля
+// Отключение проверки стиля для тестов
 tasks.named("checkstyleTest") {
     enabled = false
 }
+
+//Проверка наличия плагина и его правильной работы. Вывести все переменные окружения
+tasks.register("printEnvVariables") {
+    group = "profile"
+    description = "Prints all environment variables"
+
+    doLast {
+        System.getenv().forEach { (key, value) ->
+            println("$key = $value")
+        }
+    }
+}
+
+// Печать переменных окружения
+tasks.register("profile") {
+    group = "profile"
+    description = "Prints the active profile"
+
+    doFirst {
+        // Получаем профиль из gradle.properties или system properties
+        val activeProfile = project.findProperty("spring.profiles.active")
+            ?: project.property("springProfilesActive")
+            ?: "default"
+        println("Active profile: $activeProfile")
+
+        // Доступ к переменным окружения (нужно установить их перед запуском Gradle)
+        println(env.DB_URL.value)
+        println(env.DB_USERNAME.value)
+        println(env.DB_PASSWORD.value)
+
+        //Также возможно Доступ к переменным из gradle.properties
+        //println("DB_URL from gradle.properties: ${project.findProperty("db.url")}")
+    }
+}
+
+

@@ -8,6 +8,12 @@ import ru.job4j.devops.models.TwoArgs;
 @RestController
 @RequestMapping("calc")
 public class CalcController {
+
+    @GetMapping("/info")
+    public String info() {
+        return "Hello from CalcController";
+    }
+
     @PostMapping("summarise")
     public ResponseEntity<Result> summarise(@RequestBody TwoArgs twoArgs) {
         var result = twoArgs.getFirst() + twoArgs.getSecond();
