@@ -14,7 +14,7 @@ pipeline {
     tools {
         git 'Default'
     }
-// ➤➤➤ Добавляем блок stages
+        // ➤➤➤ Добавляем блок stages
     stages {
         stage('Prepare Environment') {
             steps {
@@ -43,12 +43,12 @@ pipeline {
             }
         }
 
-          stage('Code Coverage') {
-                   steps {
-                       runGradleTask('jacocoTestReport jacocoTestCoverageVerification', 'Code coverage FAILED')
-                   }
+        stage('Code Coverage') {
+            steps {
+               runGradleTask('jacocoTestReport jacocoTestCoverageVerification', 'Code coverage FAILED')
+             }
           }
-// refresh-dependencies заставит Gradle перезагрузить зависимости и записать их в удалённый кэш.
+        // refresh-dependencies заставит Gradle перезагрузить зависимости и записать их в удалённый кэш.
         stage('Build') {
             steps { //шаг в Jenkins pipeline: // ➤ Добавлено опциональное условие --debug \
                 script {
@@ -73,23 +73,23 @@ pipeline {
                 }
             }
         }
-// ➤➤➤ добавим новый этап, который будет загружать данные в базу:
+        // ➤➤➤ добавим новый этап, который будет загружать данные в базу:
         stage('Update DB') {
             steps {
                  runGradleTask('update', 'Update DB FAILED')
             }
         }
     }
-// ➤➤➤ Добавляем блок post для отправки уведомлений в Telegram
+        // ➤➤➤ Добавляем блок post для отправки уведомлений в Telegram
     post {
         always {
             script {
                 def buildInfo = "📊 Build Info:\n" +
-                               "Job: ${env.JOB_NAME}\n" +
-                               "Build #: ${currentBuild.number}\n" +
-                               "Status: ${currentBuild.currentResult}\n" +
-                               "Duration: ${currentBuild.durationString}\n" +
-                               "View build: ${env.BUILD_URL}"
+                          "Job: ${env.JOB_NAME}\n" +
+                          "Build #: ${currentBuild.number}\n" +
+                          "Status: ${currentBuild.currentResult}\n" +
+                          "Duration: ${currentBuild.durationString}\n" +
+                          "View build: ${env.BUILD_URL}"
                  telegramSend(message: buildInfo)
             }
         }
