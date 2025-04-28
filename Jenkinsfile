@@ -1,5 +1,6 @@
 pipeline {
     agent { label 'agent1' }
+
 // ➤➤➤ Добавляем блок environment для переменных кэша
     environment {
         // Логин/пароль из хранилища секретов Jenkins (рекомендуемый способ)
@@ -25,55 +26,28 @@ pipeline {
 
         stage('Checkstyle') {
             steps {
-                script {
-                    try {
-                        sh "./gradlew checkstyleMain checkstyleTest -P\"dotenv.filename\"=\"${DOTENV_FILE}\""
-                    } catch (e) {
-                        telegramSend(message: "Checkstyle FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
-                        error "Checkstyle failed"
-                    }
+                runGradleTask('checkstyleMain checkstyleTest', 'Checkstyle FAILED')
                 }
             }
         }
 
         stage('Compile') {
             steps {
-                script {
-                    try {
-                         sh "./gradlew compileJava -P\"dotenv.filename\"=\"${DOTENV_FILE}\""
-                    } catch (e) {
-                        telegramSend(message: "Compilation FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
-                        error "Compilation failed"
-                    }
-                }
+               runGradleTask('compileJava', 'Compilation FAILED')
             }
         }
 
         stage('Test') {
             steps {
-                script {
-                    try {
-                        sh "./gradlew test -P\"dotenv.filename\"=\"${DOTENV_FILE}\""
-                    } catch (e) {
-                        telegramSend(message: "Tests FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
-                        error "Tests failed"
-                    }
-                }
+                runGradleTask('test', 'Tests FAILED')
             }
         }
 
-        stage('Code Coverage') {
-            steps {
-                script {
-                    try {
-                        sh "./gradlew jacocoTestReport jacocoTestCoverageVerification -P\"dotenv.filename\"=\"${DOTENV_FILE}\""
-                    } catch (e) {
-                        telegramSend(message: "Code coverage FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
-                        error "Code coverage failed"
-                    }
-                }
-            }
-        }
+          stage('Code Coverage') {
+                   steps {
+                       runGradleTask('jacocoTestReport jacocoTestCoverageVerification', 'Code coverage FAILED')
+                   }
+          }
 // refresh-dependencies заставит Gradle перезагрузить зависимости и записать их в удалённый кэш.
         stage('Build') {
             steps { //шаг в Jenkins pipeline: // ➤ Добавлено опциональное условие --debug \
@@ -102,9 +76,7 @@ pipeline {
 // ➤➤➤ добавим новый этап, который будет загружать данные в базу:
         stage('Update DB') {
             steps {
-                script {
-                    sh './gradlew update -P"dotenv.filename"="/var/agent-jdk21/env/.env.develop"'
-                }
+                 runGradleTask('update', 'Update DB FAILED')
             }
         }
     }
@@ -136,5 +108,15 @@ pipeline {
             echo "Build unstable!"
             telegramSend(message: "⚠️ Build UNSTABLE: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
         }
+    }
+}
+
+// 🔥 Функция для запуска Gradle-команд
+def runGradleTask(String gradleTasks, String failMessage) {
+    try {
+        sh "./gradlew ${gradleTasks} -P\"dotenv.filename\"=\"${DOTENV_FILE}\""
+    } catch (e) {
+        telegramSend(message: "${failMessage}: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
+        error "${failMessage}"
     }
 }
