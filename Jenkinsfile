@@ -1,7 +1,21 @@
+    // 🔥 Функция для запуска Gradle-команд
+def runGradleTask(String gradleTasks, String failMessage) {
+    try {
+        sh "./gradlew ${gradleTasks} -P\"dotenv.filename\"=\"${DOTENV_FILE}\""
+    } catch (e) {
+        // Выводим ошибку в консоль Jenkins для отладки
+        echo "Error occurred while running Gradle task '${gradleTasks}': ${e.getMessage()}"
+        // Отправляем более информативное сообщение в Telegram
+        telegramSend(message: "${failMessage}: ${env.JOB_NAME} #${env.BUILD_NUMBER}\nError: ${e.getMessage()}")
+        // Устанавливаем статус сборки как FAILED
+        error "${failMessage}: ${e.getMessage()}"
+    }
+}
+
 pipeline {
     agent { label 'agent1' }
 
-// ➤➤➤ Добавляем блок environment для переменных кэша
+        // ➤➤➤ Добавляем блок environment для переменных кэша
     environment {
         // Логин/пароль из хранилища секретов Jenkins (рекомендуемый способ)
         GRADLE_REMOTE_CACHE_USERNAME = "${env.GRADLE_REMOTE_CACHE_USERNAME}"
@@ -85,11 +99,11 @@ pipeline {
         always {
             script {
                 def buildInfo = "📊 Build Info:\n" +
-                          "Job: ${env.JOB_NAME}\n" +
-                          "Build #: ${currentBuild.number}\n" +
-                          "Status: ${currentBuild.currentResult}\n" +
-                          "Duration: ${currentBuild.durationString}\n" +
-                          "View build: ${env.BUILD_URL}"
+                                "Job: ${env.JOB_NAME}\n" +
+                                "Build #: ${currentBuild.number}\n" +
+                                "Status: ${currentBuild.currentResult}\n" +
+                                "Duration: ${currentBuild.durationString}\n" +
+                                "View build: ${env.BUILD_URL}"
                  telegramSend(message: buildInfo)
             }
         }
@@ -108,15 +122,5 @@ pipeline {
             echo "Build unstable!"
             telegramSend(message: "⚠️ Build UNSTABLE: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
         }
-    }
-}
-
-// 🔥 Функция для запуска Gradle-команд
-def runGradleTask(String gradleTasks, String failMessage) {
-    try {
-        sh "./gradlew ${gradleTasks} -P\"dotenv.filename\"=\"${DOTENV_FILE}\""
-    } catch (e) {
-        telegramSend(message: "${failMessage}: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
-        error "${failMessage}"
     }
 }
