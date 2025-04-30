@@ -77,7 +77,7 @@ liquibase {
             "username" to dbUsername,
             "password" to dbPassword,
             "classpath" to "src/main/resources",
-            "changelogFile" to "db/changelog/db.changelog-master.xml"
+            "changeLogFile" to "db/changelog/db.changelog-master.xml"
         )
     }
     runList = "main"
