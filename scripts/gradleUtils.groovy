@@ -1,4 +1,4 @@
-// Это вспомогательный groovy-скрипт с функцией для Jenkinsfile
+// Р­С‚Рѕ РІСЃРїРѕРјРѕРіР°С‚РµР»СЊРЅС‹Р№ groovy-СЃРєСЂРёРїС‚ СЃ С„СѓРЅРєС†РёРµР№ РґР»СЏ Jenkinsfile
 def call(String gradleTasks, String failMessage, String dotenvFile) {
     try {
         sh "./gradlew ${gradleTasks} -P\"dotenv.filename\"=\"${dotenvFile}\""
