@@ -16,10 +16,11 @@ pipeline {
     }
 
     stages {
-        stage('Prepare Environment') {
+        stage('Init') {
             steps {
                 script {
-                    sh 'chmod +x ./gradlew'
+                     runGradleTask = load 'scripts/gradleUtils.groovy'
+                     sh 'chmod +x ./gradlew'
                 }
             }
         }
