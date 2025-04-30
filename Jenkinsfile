@@ -19,8 +19,17 @@ pipeline {
         stage('Init') {
             steps {
                 script {
-                     runGradleTask = load 'scripts/gradleUtils.groovy'
-                     sh 'chmod +x ./gradlew'
+                    echo "🔄 Loading gradleUtils..."
+                     // Сначала загружаем
+                    runGradleTask = load 'scripts/gradleUtils.groovy'
+
+                    //затем проверяем
+                    if (runGradleTask == null) {
+                        error "❌ runGradleTask is NULL! Did you forget to commit scripts/gradleUtils.groovy?"
+                    }
+
+                    sh 'chmod +x ./gradlew'
+                    echo "✅ runGradleTask loaded"
                 }
             }
         }

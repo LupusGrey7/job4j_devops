@@ -8,3 +8,6 @@ def call(String gradleTasks, String failMessage, String dotenvFile) {
         error "${failMessage}: ${e.getMessage()}"
     }
 }
+
+return this
+//⏎ return this — обязательно, чтобы load возвращал объект, на котором можно вызывать функцию
