@@ -65,22 +65,24 @@ dependencies {
 // Liquibase конфигурация с переменными из .env
 // Liquibase runtime dependencies (настроим профиль для Liquibase)+ добавили ENV из файла .env.local для локального окружения (пример "DB_USERNAME")
 liquibase {
-    activities.register("main") {
-
+      activities.register("main") {
         val dbUrl = env.DB_URL.value
         val dbUsername = env.DB_USERNAME.value
         val dbPassword = env.DB_PASSWORD.value
 
         this.arguments = mapOf(
             "logLevel" to "info",
+            "driver" to "org.postgresql.Driver",
             "url" to dbUrl,
             "username" to dbUsername,
             "password" to dbPassword,
-            "classpath" to "src/main/resources",
-            "changeLogFile" to "db/changelog/db.changelog-master.xml"
+            "classpath" to "${project.rootDir}/application/src/main/",
+            "searchPath" to "${project.rootDir}/application/src/main/resources/",
+            "changelogFile" to "db/changelog/db.changelog-master.xml"
         )
     }
     runList = "main"
+    jvmArgs = "-Duser.dir=$projectDir"
 }
 
 //buildscript -  Liquibase
@@ -92,6 +94,7 @@ buildscript {
         classpath("org.liquibase:liquibase-core:4.30.0")
     }
 }
+
 // Проверка покрытия
 tasks.jacocoTestCoverageVerification {
     violationRules {
@@ -236,5 +239,3 @@ tasks.register("profile") {
         //println("DB_URL from gradle.properties: ${project.findProperty("db.url")}")
     }
 }
-
-
