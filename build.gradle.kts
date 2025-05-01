@@ -76,8 +76,7 @@ liquibase {
             "url" to dbUrl,
             "username" to dbUsername,
             "password" to dbPassword,
-            "classpath" to "${project.rootDir}/application/src/main/",
-            "searchPath" to "${project.rootDir}/application/src/main/resources/",
+            "classpath"      to "src/main/resources",
             "changelogFile" to "db/changelog/db.changelog-master.xml"
         )
     }
