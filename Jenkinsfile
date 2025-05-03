@@ -1,35 +1,68 @@
 pipeline {
     agent { label 'agent1' }
 
-// ➤➤➤ Добавляем блок environment для переменных кэша
+    // ➤➤➤ Добавляем блок environment для переменных кэша
     environment {
-// Логин/пароль из хранилища секретов Jenkins (рекомендуемый способ)
+        // 1. Настройки кэша (как у вас)
+        // Логин/пароль из хранилища секретов Jenkins (рекомендуемый способ)
         GRADLE_REMOTE_CACHE_USERNAME = "${env.GRADLE_REMOTE_CACHE_USERNAME}"
         GRADLE_REMOTE_CACHE_PASSWORD = "${env.GRADLE_REMOTE_CACHE_PASSWORD}"
-// URL кэша из системных переменных Jenkins (если задан)
+        // URL кэша из системных переменных Jenkins (если задан)
         GRADLE_REMOTE_CACHE_URL = "${env.GRADLE_REMOTE_CACHE_URL ?: 'http://192.168.0.109:5071/cache/'}"
-        DOTENV_FILE = "/var/agent-jdk21/env/.env.develop"
+
+        // 2. Окружение и .env файл
+        ENV = "${params.ENV ?: 'develop'}" // Делаем параметризуемым
+        DOTENV_BASE_DIR = "/var/agent-jdk21/env" // Базовая директория
+        DOTENV_FILE = "${DOTENV_BASE_DIR}/.env.${ENV}" // Полный путь
+}
+        // 3. Важные флаги (можно переопределять в параметрах pipeline)
+        SKIP_TESTS = "${params.SKIP_TESTS ?: false}"
+    }
+
+    parameters {
+        booleanParam(
+            name: 'SKIP_TESTS',
+            defaultValue: false,
+            description: 'Пропустить выполнение тестов?'
+        )
+        choice(
+            name: 'ENV',
+            choices: ['develop', 'ci', 'stage'],
+            description: 'Выберите окружение'
+        )
     }
 
     tools {
         git 'Default'
+        jdk 'jdk21' // Явно указываем JDK
     }
 
     stages {
         stage('Init') {
             steps {
                 script {
+                    // Проверка существования скрипта
+                    if (!fileExists('scripts/gradleUtils.groovy')) {
+                        error "❌ gradleUtils.groovy not found!"
+                    }
+
                     echo "🔄 Loading gradleUtils..."
-                     // Сначала загружаем
+                    // Сначала загружаем
                     runGradleTask = load 'scripts/gradleUtils.groovy'
+                    sh 'chmod +x ./gradlew'
 
                     //затем проверяем
                     if (runGradleTask == null) {
                         error "❌ runGradleTask is NULL! Did you forget to commit scripts/gradleUtils.groovy?"
                     }
 
-                    sh 'chmod +x ./gradlew'
-                    echo "✅ runGradleTask loaded"
+                    // Логирование информации о среде
+                    echo """
+                    ⚙️ Environment Info:
+                    - ENV: ${ENV}
+                    - Java: ${JAVA_HOME}
+                    - Gradle Cache: ${GRADLE_REMOTE_CACHE_URL}
+                    """
                 }
             }
         }
@@ -51,6 +84,9 @@ pipeline {
         }
 
         stage('Test') {
+            when {
+                expression { return !params.SKIP_TESTS.toBoolean() }
+            }
             steps {
                 script {
                     runGradleTask('test', 'Tests FAILED', DOTENV_FILE)
@@ -66,27 +102,24 @@ pipeline {
             }
         }
 
-// refresh-dependencies заставит Gradle перезагрузить зависимости и записать их в удалённый кэш.
         stage('Build') {
             steps {
                 script {
                     try {
-                        sh """
-                            ./gradlew clean build \\
-                            --build-cache \\
-                            --refresh-dependencies \\
-                            --info \\
-                            --debug \\
-                            -x test \\
-                            -P\"dotenv.filename\"=\"${DOTENV_FILE}\" \\
-                            -Dgradle.cache.remote.url=${GRADLE_REMOTE_CACHE_URL} \\
-                            -Dgradle.cache.remote.username=${GRADLE_REMOTE_CACHE_USERNAME} \\
-                            -Dgradle.cache.remote.password=${GRADLE_REMOTE_CACHE_PASSWORD}
-                        """
-                        telegramSend(message: "✅ Build SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}\nView build: ${env.BUILD_URL}")
+                        // Унифицированный вызов через runGradleTask
+                        runGradleTask(
+                            "clean build --build-cache --refresh-dependencies -x test " +
+                            "-Pdotenv.filename=${DOTENV_FILE} " +
+                            "-Dgradle.cache.remote.url=${GRADLE_REMOTE_CACHE_URL} " +
+                            "-Dgradle.cache.remote.username=${GRADLE_REMOTE_CACHE_CREDS_USR} " +
+                            "-Dgradle.cache.remote.password=${GRADLE_REMOTE_CACHE_CREDS_PSW}",
+                            'Build FAILED',
+                            DOTENV_FILE
+                        )
+                        telegramSend(message: "✅ Build SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
                     } catch (e) {
-                        telegramSend(message: "❌ Build FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}\nView build: ${env.BUILD_URL}")
-                        error "Build failed"
+                        telegramSend(message: "❌ Build FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
+                        error "Build failed: ${e.message}"
                     }
                 }
             }
@@ -101,19 +134,25 @@ pipeline {
         }
     }
 
-// ➤➤➤ Добавляем блок post для отправки уведомлений в Telegram
+    // ➤➤➤ Добавляем блок post для отправки уведомлений в Telegram
     post {
         always {
             script {
-                def buildInfo = "📊 Build Info:\n" +
-                        "Job: ${env.JOB_NAME}\n" +
-                        "Build #: ${currentBuild.number}\n" +
-                        "Status: ${currentBuild.currentResult}\n" +
-                        "Duration: ${currentBuild.durationString}\n" +
-                        "View build: ${env.BUILD_URL}"
+                def buildInfo = """
+                📊 Build Info:
+                Job: ${env.JOB_NAME}
+                Build #: ${currentBuild.number}
+                Status: ${currentBuild.currentResult}
+                Duration: ${currentBuild.durationString}
+                Environment: ${ENV}
+                """.stripIndent()
+
                 telegramSend(message: buildInfo)
-            }
-        }
+
+                // Очистка .env файла если он был скопирован
+                if (fileExists('.env')) {
+                    sh 'rm -f .env'
+                }
 
         success {
             echo "Build succeeded!"

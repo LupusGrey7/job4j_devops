@@ -14,8 +14,14 @@ group = "ru.job4j.devops"
 version = "1.0.0"
 
 // Устанавливаем переменную окружения, если она не задана явно
+// 1. Определяем активное окружение
 val activeEnv = System.getenv("ENV") ?: "local"
-val envFile = file("env/.env.$activeEnv")
+
+// 2. Файлы env в порядке приоритета
+val envFiles = listOf(
+    file("env/.env.$activeEnv"),    // основной файл для окружения
+    file(".env.example")           // fallback-шаблон
+)
 //val dotEnvTarget = file(".env")
 
 // объект для хранения исходного интеграционных тестов.
@@ -41,16 +47,25 @@ val integrationTestRuntimeOnly by configurations.getting {
 }
 
 // Копируем нужный .env файл из папки env в корень проекта
+// 3. Улучшенный task с проверкой существования файлов
 tasks.register<Copy>("prepareDotEnv") {
-    group = "prepareDotEnv"
-    description = "Копируем нужный .env файл из папки env в корень проекта"
+    group = "setup"
+    description = "Prepare .env file for current environment"
 
-    from(envFile)
-    into(layout.buildDirectory.dir("dotEnv"))
+    // Берем первый существующий файл из списка
+    val sourceFile = envFiles.firstOrNull { it.exists() }
+        ?: throw GradleException("No .env files found! Tried: ${envFiles.map { it.name }}")
+
+    from(sourceFile)
+    into(project.layout.projectDirectory)  // копируем прямо в корень проекта
     rename { ".env" }
-    doNotTrackState("We want this task to skip tracking file state for Gradle 8+ compatibility.")
+
+    doLast {
+        logger.lifecycle("Using env file: ${sourceFile.name}")
+    }
 }
 
+// 4. Интеграция с процессом сборки
 tasks.named("processResources") {
     dependsOn("prepareDotEnv")
 }
@@ -86,7 +101,7 @@ dependencies {
 }
 
 // Liquibase конфигурация с переменными из .env
-// Liquibase runtime dependencies (настроим профиль для Liquibase)+ добавили ENV из файла .env.local для локального окружения (пример "DB_USERNAME")
+// Liquibase runtime dependencies (настроим профиль для Liquibase)+ добавили ENV из файла .env.example для локального окружения (пример "DB_USERNAME")
 liquibase {
     activities.register("main") {
         val dbUrl = env.DB_URL.value
