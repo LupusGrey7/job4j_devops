@@ -18,6 +18,28 @@ val activeEnv = System.getenv("ENV") ?: "local"
 val envFile = file("env/.env.$activeEnv")
 //val dotEnvTarget = file(".env")
 
+// объект для хранения исходного интеграционных тестов.
+val integrationTest by sourceSets.creating {
+    java {
+        srcDir("src/integrationTest/java/ru.job4j.develop.integration/")
+    }
+    resources {
+        srcDir("src/integrationTest/resources")
+    }
+
+    // Let the integrationTest classpath include the main and test outputs
+    compileClasspath += sourceSets["main"].output + sourceSets["test"].output
+    runtimeClasspath += sourceSets["main"].output + sourceSets["test"].output
+}
+
+// зависимости для тестирования
+val integrationTestImplementation by configurations.getting {
+    extendsFrom(configurations["testImplementation"])
+}
+val integrationTestRuntimeOnly by configurations.getting {
+    extendsFrom(configurations["testRuntimeOnly"])
+}
+
 // Копируем нужный .env файл из папки env в корень проекта
 tasks.register<Copy>("prepareDotEnv") {
     group = "prepareDotEnv"
@@ -60,12 +82,13 @@ dependencies {
     testImplementation(libs.spring.boot.starter.test) // Включает JUnit и AssertJ
     testImplementation(libs.assertj.core)             // Явное указание (если нужно)
     testImplementation(libs.h2)                        // Включает H2 для тестов
+    testImplementation(libs.testcontainers.postgresql) // зависимости для Testcontainers.
 }
 
 // Liquibase конфигурация с переменными из .env
 // Liquibase runtime dependencies (настроим профиль для Liquibase)+ добавили ENV из файла .env.local для локального окружения (пример "DB_USERNAME")
 liquibase {
-      activities.register("main") {
+    activities.register("main") {
         val dbUrl = env.DB_URL.value
         val dbUsername = env.DB_USERNAME.value
         val dbPassword = env.DB_PASSWORD.value
@@ -76,7 +99,7 @@ liquibase {
             "url" to dbUrl,
             "username" to dbUsername,
             "password" to dbPassword,
-            "classpath"      to "src/main/resources",
+            "classpath" to "src/main/resources",
             "changelogFile" to "db/changelog/db.changelog-master.xml"
         )
     }
@@ -236,5 +259,22 @@ tasks.register("profile") {
 
         //Также возможно Доступ к переменным из gradle.properties
         //println("DB_URL from gradle.properties: ${project.findProperty("db.url")}")
+    }
+
+    // группа check
+    tasks.check {
+        dependsOn("integrationTest")
+    }
+
+    // Task - задача для запуска интеграционных тестов
+    tasks.register<Test>("integrationTest") {
+        description = "Runs the integration tests."
+        group = "verification"
+
+        testClassesDirs = integrationTest.output.classesDirs
+        classpath = integrationTest.runtimeClasspath
+
+        // Usually run after regular unit tests
+        shouldRunAfter(tasks.test)
     }
 }

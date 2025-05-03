@@ -16,6 +16,7 @@ picocli = "4.6.1"
 postgresql = "42.7.4"
 h2 = "2.2.224" # Latest H2 version as of April 2025
 dotenv = "4.0.0"
+testcontainers-postgresql = "1.20.4"
 
 [libraries] # — здесь описываются библиотеки и их версии.
 lombok = { group = "org.projectlombok", name = "lombok", version.ref = "lombok" }
@@ -32,6 +33,8 @@ logback-classic = { group = "ch.qos.logback", name = "logback-classic", version.
 picocli = { group = "info.picocli", name = "picocli", version.ref = "picocli" }
 postgresql = { group = "org.postgresql", name = "postgresql", version.ref = "postgresql" }
 h2 = { module = "com.h2database:h2", version.ref = "h2" }
+testcontainers-postgresql = { group = "org.testcontainers", name = "postgresql", version.ref = "testcontainers-postgresql" }
+
 
 [bundles] # — здесь можно группировать несколько зависимостей вместе.
 # spring = ["spring-boot-starter-web", "spring-boot-starter-data-jpa"]
