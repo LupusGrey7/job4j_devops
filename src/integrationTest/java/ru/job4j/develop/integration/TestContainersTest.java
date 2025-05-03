@@ -5,27 +5,32 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.PostgreSQLContainer;
 
+import java.util.logging.Logger;
+
 public class TestContainersTest {
 
-    private static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(
+    Logger LOGGER = Logger.getLogger(getClass().getName());
+
+
+    private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
             "postgres:16-alpine"
     );
 
     @BeforeAll
     static void beforeAll() {
-        postgres.start();
+        POSTGRES.start();
 
     }
 
     @AfterAll
     static void afterAll() {
-        postgres.stop();
+        POSTGRES.stop();
     }
 
     @Test
     public void whenSaveUser() {
-        System.out.println(postgres.getJdbcUrl());
-        System.out.println(postgres.getUsername());
-        System.out.println(postgres.getPassword());
+        LOGGER.info("DB URL: " + POSTGRES.getJdbcUrl());
+        LOGGER.info("DB User name: " + POSTGRES.getUsername());
+        LOGGER.info("DB Password: " + POSTGRES.getPassword());
     }
 }
