@@ -39,6 +39,6 @@ out/
 
 ### Gradle ###
 #ENV
-.env
-env/.env.*
+#.env
+#env/.env.*
 # env/*
