@@ -3,14 +3,13 @@ package ru.job4j.develop.integration;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.PostgreSQLContainer;
-
-import java.util.logging.Logger;
 
 public class TestContainersTest {
 
-    Logger LOGGER = Logger.getLogger(getClass().getName());
-
+    private static final Logger LOGGER = LoggerFactory.getLogger(TestContainersTest.class);
 
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
             "postgres:16-alpine"
@@ -19,7 +18,6 @@ public class TestContainersTest {
     @BeforeAll
     static void beforeAll() {
         POSTGRES.start();
-
     }
 
     @AfterAll
@@ -29,8 +27,8 @@ public class TestContainersTest {
 
     @Test
     public void whenSaveUser() {
-        LOGGER.info("DB URL: " + POSTGRES.getJdbcUrl());
-        LOGGER.info("DB User name: " + POSTGRES.getUsername());
-        LOGGER.info("DB Password: " + POSTGRES.getPassword());
+        LOGGER.info("DB URL: {}", POSTGRES.getJdbcUrl());
+        LOGGER.info("DB User name: {}", POSTGRES.getUsername());
+        LOGGER.info("DB Password: {}",  POSTGRES.getPassword());
     }
 }

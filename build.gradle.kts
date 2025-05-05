@@ -15,30 +15,60 @@ plugins {
 group = "ru.job4j.devops"
 version = "1.0.0"
 
-// 1. Определяем активное окружение // Устанавливаем переменную окружения, если она не задана явно
-val activeEnv = System.getenv("ENV") ?: "local"
+// --- Конфигурация зависимостей Gradle для плагина Liquibase ---
 
-// 2. Файлы env в порядке приоритета
-val envFiles = listOf(
-    file("env/.env.$activeEnv"),    // основной файл для окружения
-    file(".env.example")           // fallback-шаблон
-)
-
-// 3. Выбираем первый существующий файл
-val envFile = envFiles.firstOrNull { it.exists() }
-    ?: throw GradleException("No .env files found! Tried: ${envFiles.map { it.name }}")
-
-// 4. Читаем .env файл (правильный способ)
-val envProperties = Properties().apply {
-    FileInputStream(envFile).use { fis ->
-        load(fis)
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        google()
+    }
+    dependencies {
+        classpath(libs.liquibase.core)
     }
 }
 
+// --- Работа с переменными окружения (.env) ---
+
+val activeEnv = System.getenv("ENV") ?: "local" // 1. Определяем активное окружение // Устанавливаем переменную окружения, если она не задана явно
+val envFiles = listOf(
+    file("env/.env.$activeEnv"), // основной файл для окружения
+    file(".env.example") // fallback-шаблон
+)
+
+val envProperties = Properties().apply {
+    val envFile = envFiles.firstOrNull { it.exists() } // Выбираем первый существующий файл
+
+    if (envFile != null) { // Читаем .env файл (правильный способ)
+        FileInputStream(envFile).use { fis ->
+            load(fis)
+        }
+        logger.lifecycle("✅ Loaded .env file: ${envFile.name}")
+    } else {
+        logger.warn("⚠️ No .env files found. Tried: ${envFiles.map { it.name }}. Using default values.")
+    }
+}
+
+tasks.register("validateEnv") {
+    group = "Environment Management"
+    description = "Validates the environment configuration"
+    inputs.files(envFiles.filter { it.exists() })
+    doLast {
+        if (envProperties.isEmpty) {
+            logger.warn("No .env file loaded. Using default database settings.")
+        } else {
+            logger.lifecycle("✅ Environment configuration:")
+            logger.lifecycle("   DB_URL=${envProperties.getProperty("DB_URL") ?: "default"}")
+            logger.lifecycle("   DB_USER=${envProperties.getProperty("DB_USERNAME") ?: "default"}")
+        }
+    }
+}
+
+// --- Конфигурация source sets ---
 // объект для хранения исходного интеграционных тестов.
 val integrationTest by sourceSets.creating {
     java {
-        srcDir("src/integrationTest/java") // Убрать подпапку ru.job4j.develop.integration
+        srcDir("src/integrationTest/java")
     }
     resources {
         srcDir("src/integrationTest/resources")
@@ -55,13 +85,13 @@ val integrationTestRuntimeOnly by configurations.getting {
     extendsFrom(configurations["testRuntimeOnly"])
 }
 
+// --- Checkstyle ---
 //Вариант с кастомным конфигом (более правильно) // В разделе checkstyle
 tasks.withType<Checkstyle>().configureEach {
     when (name) {
         "checkstyleIntegrationTest" -> try {
             val configFile = file("config/checkstyle/checkstyle-integration.xml").takeIf { it.exists() }
                 ?: file("config/checkstyle/checkstyle.xml")
-
             config = resources.text.fromFile(configFile)
             maxErrors = 0
             maxWarnings = 10
@@ -72,46 +102,30 @@ tasks.withType<Checkstyle>().configureEach {
     }
 }
 
-// 3. Улучшенный task с проверкой существования файлов // Копируем нужный .env файл из папки env в корень проекта
-tasks.register<Copy>("prepareDotEnv") {
-    group = "setup"
-    description = "Prepare .env file for current environment"
-
-    // Берем первый существующий файл из списка
-    val sourceFile = envFiles.firstOrNull { it.exists() }
-        ?: throw GradleException("No .env files found! Tried: ${envFiles.map { it.name }}")
-
-    from(sourceFile)
-    into(project.layout.projectDirectory)
-    rename { ".env" }
-
-    outputs.file(layout.projectDirectory.file(".env")) // Явно объявляем выходной файл
-
-    doLast {
-        logger.lifecycle("Using env file: ${sourceFile.name}")
-    }
+tasks.named("checkstyleTest") {
+    enabled = false
 }
 
-// 4. Проверяем перед сборкой
-tasks.named("processResources") {
-    dependsOn("prepareDotEnv")
-    dependsOn("validateEnv")
-}
+// --- Репозитории и зависимости ---
 
 repositories {
+    mavenLocal()
     mavenCentral()
+    google()
 }
 
 dependencies {
-    //Core
+    // Core
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.boot.starter.data.jpa)
 
     // Liquibase
     implementation(libs.liquibase.core)
     implementation(libs.postgresql)
+    implementation(libs.h2)
     add("liquibaseRuntime", libs.liquibase.core)
     add("liquibaseRuntime", libs.postgresql)
+    add("liquibaseRuntime", libs.h2)
     add("liquibaseRuntime", libs.jaxb.api)
     add("liquibaseRuntime", libs.logback.core)
     add("liquibaseRuntime", libs.logback.classic)
@@ -122,23 +136,29 @@ dependencies {
     annotationProcessor(libs.lombok)
 
     // Тестовые зависимости
-    testImplementation(libs.spring.boot.starter.test) // Включает JUnit и AssertJ
-    testImplementation(libs.assertj.core)             // Явное указание (если нужно)
-    testImplementation(libs.h2)                        // Включает H2 для тестов
-    testImplementation(libs.testcontainers.postgresql) // зависимости для Testcontainers.
+    testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.assertj.core)
+    testImplementation(libs.h2)
+    testImplementation(libs.testcontainers.postgresql)
+
+    // Интеграционные тесты
+    integrationTestImplementation(libs.liquibase.core)
+    integrationTestImplementation(libs.postgresql)
+    integrationTestImplementation(libs.h2)
+    integrationTestImplementation(libs.testcontainers.postgresql)
 }
 
-// Liquibase конфигурация с переменными из .env
+// --- Liquibase ---
 // Liquibase runtime dependencies (настроим профиль для Liquibase)+ добавили ENV из файла .env.example для локального окружения (пример "DB_USERNAME")
 liquibase {
     activities.register("main") {
-        val dbUrl = envProperties.getProperty("DB_URL") ?: "jdbc:h2:mem:testdb"
+        val dbUrl = envProperties.getProperty("DB_URL") ?: "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1"
         val dbUser = envProperties.getProperty("DB_USERNAME") ?: "sa"
         val dbPass = envProperties.getProperty("DB_PASSWORD") ?: ""
 
-        this.arguments = mapOf(
+        arguments = mapOf(
             "logLevel" to "info",
-            "driver" to "org.postgresql.Driver",
+            "driver" to if (dbUrl.contains("h2")) "org.h2.Driver" else "org.postgresql.Driver",
             "url" to dbUrl,
             "username" to dbUser,
             "password" to dbPass,
@@ -147,20 +167,10 @@ liquibase {
         )
     }
     runList = "main"
-    jvmArgs = "-Duser.dir=$projectDir"
 }
 
-//buildscript -  Liquibase
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath("org.liquibase:liquibase-core:4.30.0")
-    }
-}
+// --- Jacoco ---
 
-// Проверка покрытия
 tasks.jacocoTestCoverageVerification {
     violationRules {
         rule {
@@ -168,12 +178,10 @@ tasks.jacocoTestCoverageVerification {
                 minimum = "0.8".toBigDecimal()
             }
         }
-
         rule {
             isEnabled = false
             element = "CLASS"
             includes = listOf("org.gradle.*")
-
             limit {
                 counter = "LINE"
                 value = "TOTALCOUNT"
@@ -183,71 +191,49 @@ tasks.jacocoTestCoverageVerification {
     }
 }
 
-// 5. Настраиваем зависимости для всех задач компиляции
-tasks.withType<AbstractCompile>().configureEach {
-    dependsOn("prepareDotEnv") // Явная зависимость
-}
+// --- Тесты ---
 
-// Эта конфигурация применяется ко всем задачам типа Test(включая test, integrationTest и другие)
-tasks.withType<Test> {
-//    useJUnitPlatform()
-//    outputs.cacheIf { true } // Включаем кеширование для тестов
-
-    // Устанавливаем системные свойства для подключения к БД
-    systemProperty(
-        "spring.datasource.url",
-        envProperties.getProperty("DB_URL") ?: "jdbc:h2:mem:testdb"
-    )
-    systemProperty(
-        "spring.datasource.username",
-        envProperties.getProperty("DB_USERNAME") ?: "sa"
-    )
-    systemProperty(
-        "spring.datasource.password",
-        envProperties.getProperty("DB_PASSWORD") ?: ""
-    )
-}
-
-// 6. Валидационная задача
-tasks.register("validateEnv") {
-    group = "Environment Management" // Group name for organizing related tasks
-    description =
-        "Validates the environment configuration by checking the .env file and logging key properties." // Brief description of what the task does
-
-    dependsOn("prepareDotEnv") // Зависимость от prepareDotEnv
-    inputs.file(layout.projectDirectory.file(".env")) // Явный input
-
-    doLast {
-        logger.lifecycle("✅ Using env file: ${envFile.path}")
-        logger.lifecycle("   DB_URL=${envProperties.getProperty("DB_URL")}")
-        logger.lifecycle("   DB_USER=${envProperties.getProperty("DB_USERNAME")}")
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
+    // Для тестов с профилем "test" используем H2 в памяти
+    if (project.findProperty("spring.profiles.active")?.toString()?.contains("test") == true) {
+        systemProperty("spring.datasource.url", "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL")
+        systemProperty("spring.datasource.driver-class-name", "org.h2.Driver")
+        systemProperty("spring.datasource.username", "sa")
+        systemProperty("spring.datasource.password", "")
+    } else {
+        systemProperty(
+            "spring.datasource.url",
+            envProperties.getProperty("DB_URL") ?: "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1"
+        )
+        systemProperty(
+            "spring.datasource.driver-class-name",
+            if (envProperties.getProperty("DB_URL")?.contains("h2") == true) "org.h2.Driver" else "org.postgresql.Driver"
+        )
+        systemProperty(
+            "spring.datasource.username",
+            envProperties.getProperty("DB_USERNAME") ?: "sa"
+        )
+        systemProperty(
+            "spring.datasource.password",
+            envProperties.getProperty("DB_PASSWORD") ?: ""
+        )
     }
 }
 
-// 7. Общая конфигурация
-afterEvaluate {
-    tasks.named("compileJava") {
-        dependsOn("prepareDotEnv")
-    }
-    tasks.named("compileTestJava") {
-        dependsOn("prepareDotEnv")
-    }
-    tasks.named("compileIntegrationTestJava") {
-        dependsOn("prepareDotEnv")
-    }
+//отдельную задачу для запуска интеграционных тестов
+tasks.register<Test>("integrationTest") {
+    description = "Runs integration tests"
+    group = "verification"
+    testClassesDirs = integrationTest.output.classesDirs
+    classpath = integrationTest.runtimeClasspath
+    shouldRunAfter(tasks.test)
+}
+tasks.check {
+    dependsOn("integrationTest")
 }
 
-tasks.register<Zip>("zipJavaDoc") {
-    group = "documentation" // Группа, в которой будет отображаться задача
-    description = "Packs the generated Javadoc into a zip archive"
-
-    dependsOn("javadoc") // Указываем, что задача зависит от выполнения javadoc
-
-    from("build/docs/javadoc") // Исходная папка для упаковки
-    archiveFileName.set("javadoc.zip") // Имя создаваемого архива
-    destinationDirectory.set(layout.buildDirectory.dir("archives")) // Директория, куда будет сохранен архив
-}
-
+// --- SpotBugs ---
 //SpotBugs для статического анализа кода
 tasks.spotbugsMain {
     reports.create("html") {
@@ -255,30 +241,38 @@ tasks.spotbugsMain {
         outputLocation.set(layout.buildDirectory.file("reports/spotbugs/spotbugs.html"))
     }
 }
-// Эта конфигурация применяется только к конкретной задаче test
+
 tasks.test {
-    // Запускает spotbugsMain после завершения тестов
     finalizedBy(tasks.spotbugsMain)
+}
+
+// --- Прочие задачи ---
+
+tasks.register<Zip>("zipJavaDoc") {
+    group = "documentation" // Группа, в которой будет отображаться задача
+    description = "Packs the generated Javadoc into a zip archive"
+    dependsOn("javadoc")
+    from("build/docs/javadoc")
+    archiveFileName.set("javadoc.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("archives"))
 }
 
 //задача для проверки размера JAR-файла
 tasks.register("checkJarSize") {
     group = "verification"
-    description = "Checks the size of the generated JAR file."
-
+    description = "Checks the size of the generated JAR file"
     dependsOn("jar") // Задача зависит от сборки JAR
-
     doLast {
-        val jarFile = file("build/libs/${project.name}-${project.version}.jar") // Путь к JAR-файлу
+        val jarFile = file("build/libs/${project.name}-${project.version}.jar")
         if (jarFile.exists()) {
-            val sizeInMB = jarFile.length() / (1024 * 1024) // Размер в мегабайтах
+            val sizeInMB = jarFile.length() / (1024 * 1024)
             if (sizeInMB > 5) {
-                println("WARNING: JAR file exceeds the size limit of 5 MB. Current size: ${sizeInMB} MB")
+                logger.warn("WARNING: JAR file exceeds 5 MB. Size: $sizeInMB MB")
             } else {
-                println("JAR file is within the acceptable size limit. Current size: ${sizeInMB} MB")
+                logger.lifecycle("JAR file size: $sizeInMB MB")
             }
         } else {
-            println("JAR file not found. Please make sure the build process completed successfully.")
+            logger.error("JAR file not found")
         }
     }
 }
@@ -289,13 +283,12 @@ tasks.register<Zip>("archiveResources") {
     description = "Archives the resources folder into a ZIP file"
 
     val inputDir = file("src/main/resources")
-    // Используем layout.buildDirectory для корректного пути
-    val outputDir = layout.buildDirectory.dir("archives")
+    val outputDir = layout.buildDirectory.dir("archives") // Связываем задачу(архивирования содержимое директории) с жизненным циклом (например, после сборки JAR)
 
-    inputs.dir(inputDir) // Входные данные для инкрементальной сборки
-    outputs.file(outputDir.map { it.file("resources.zip") }) // Выходной файл
-
+    inputs.dir(inputDir)
+    outputs.file(outputDir.map { it.file("resources.zip") })
     from(inputDir)
+
     destinationDirectory.set(outputDir)
     archiveFileName.set("resources.zip")
 
@@ -309,19 +302,14 @@ tasks.named("jar") {
     finalizedBy("archiveResources")
 }
 
-// Отключение проверки стиля для тестов
-tasks.named("checkstyleTest") {
-    enabled = false
-}
+// --- Переменные окружения ---
 
-//Проверка наличия плагина и его правильной работы. Вывести все переменные окружения
 tasks.register("printEnvVariables") {
     group = "profile"
     description = "Prints all environment variables"
-
     doLast {
         System.getenv().forEach { (key, value) ->
-            println("$key = $value")
+            logger.lifecycle("$key = $value")
         }
     }
 }
@@ -331,61 +319,14 @@ tasks.register("profile") {
     group = "profile"
     description = "Prints the active profile"
 
-    doFirst {
+    doLast {
         // Получаем профиль из gradle.properties или system properties
         val activeProfile = project.findProperty("spring.profiles.active")
-            ?: project.property("springProfilesActive")
-            ?: "default"
-        println("Active profile: $activeProfile")
+            ?: project.property("springProfilesActive") ?: "default"
 
-        // Доступ к переменным окружения (нужно установить их перед запуском Gradle)
-        println(env.DB_URL.value)
-        println(env.DB_USERNAME.value)
-        println(env.DB_PASSWORD.value)
-
-        //Также возможно Доступ к переменным из gradle.properties
-        //println("DB_URL from gradle.properties: ${project.findProperty("db.url")}")
+        logger.lifecycle("Active profile: $activeProfile")
+        logger.lifecycle("DB_URL: ${envProperties.getProperty("DB_URL") ?: "default"}")
+        logger.lifecycle("DB_USERNAME: ${envProperties.getProperty("DB_USERNAME") ?: "default"}")
+        logger.lifecycle("DB_PASSWORD: ${envProperties.getProperty("DB_PASSWORD") ?: "default"}")
     }
-
-    // группа check
-    tasks.check {
-        dependsOn("integrationTest")
-    }
-
-    // Task - задача для запуска интеграционных тестов
-    tasks.register<Test>("integrationTest") {
-        description = "Runs integration tests"
-        group = "verification"
-
-        testClassesDirs = integrationTest.output.classesDirs
-        classpath = integrationTest.runtimeClasspath
-
-        useJUnitPlatform()
-        shouldRunAfter(tasks.test)
-
-        systemProperty(
-            "spring.datasource.url",
-            envProperties.getProperty("DB_URL") ?: "jdbc:h2:mem:testdb"
-        )
-    }
-    // Для всех задач обработки ресурсов
-    tasks.withType<ProcessResources>().configureEach {
-        dependsOn("prepareDotEnv")
-        mustRunAfter("prepareDotEnv")
-    }
-
-// Для тестовых ресурсов отдельно
-    tasks.named("processTestResources") {
-        dependsOn("prepareDotEnv")
-        mustRunAfter("prepareDotEnv")
-    }
-
-// Для интеграционных тестов
-    tasks.named("processIntegrationTestResources") {
-        dependsOn("prepareDotEnv")
-        mustRunAfter("prepareDotEnv")
-    }
-}
-tasks.named<ProcessResources>("processTestResources") {
-    dependsOn("prepareDotEnv")
 }
