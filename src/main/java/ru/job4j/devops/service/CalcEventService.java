@@ -18,7 +18,6 @@ import java.time.LocalDateTime;
 @Transactional
 public class CalcEventService {
 
-
     private final CalcEventRepository repository;
 
     public CalcEvent add(User user, int first, int second) {

@@ -41,8 +41,8 @@ public class CalcEvent {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o){ return true;}
+        if (o == null || getClass() != o.getClass()) {return false;}
         CalcEvent calcEvent = (CalcEvent) o;
         return Objects.equals(first, calcEvent.first) && Objects.equals(second, calcEvent.second) && result == calcEvent.result && Objects.equals(id, calcEvent.id) && Objects.equals(user, calcEvent.user) && Objects.equals(createDate, calcEvent.createDate) && Objects.equals(type, calcEvent.type);
     }
