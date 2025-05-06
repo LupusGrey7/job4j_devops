@@ -1,14 +1,13 @@
 package ru.job4j.develop.integration.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
 
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -27,9 +26,11 @@ import ru.job4j.devops.service.CalcEventService;
 public class CalcEventServiceIntegrationTest {
 
     @Autowired
-    CalcEventService service;
+    CalcEventService eventService;
+
     @Autowired
-    private CalcEventRepository repository;
+    private CalcEventRepository eventRepository;
+
     @Autowired
     private UserRepository userRepository;
 
@@ -62,12 +63,13 @@ public class CalcEventServiceIntegrationTest {
         user.setName("Job4j");
         var savedUser = userRepository.save(user);
 
-        var calcEvent = service.add(savedUser, first, second);
+        var calcEvent = eventService.add(savedUser, first, second);
+        var foundEvent = eventRepository.findById(calcEvent.getId());
 
-        var foundEvent = repository.findById(calcEvent.getId());
-
+        assertThat(calcEvent).isNotNull();
+        assertThat(calcEvent.getId()).isNotNull();
         assertThat(foundEvent).isPresent();
         assertThat(foundEvent.get().getUser().getName()).isEqualTo("Job4j");
-        assertEquals(calcEvent.getId(), foundEvent.get().getId());
+        Assertions.assertEquals(calcEvent.getId(), foundEvent.get().getId());
     }
 }

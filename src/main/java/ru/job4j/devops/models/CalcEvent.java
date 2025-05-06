@@ -6,12 +6,18 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
+/**
+ * Кастомизация билдера - Обновленный билдер для защиты от сохранения ссылки на мутабельный объект()
+ * Почему это происходит?
+ * Класс User является мутабельным (имеет сеттеры, аннотированные @Setter).
+ * Поле CalcEvent.user хранит прямую ссылку на объект User, переданный через конструктор или билдер.
+ * SpotBugs считает это небезопасным, так как внешний код может изменить объект User после его передачи в CalcEvent, что нарушит целостность данных.
+ */
 @Entity
 @Table(name = "calc_events")
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 @Builder
 @ToString
 public class CalcEvent {
@@ -22,29 +28,94 @@ public class CalcEvent {
 
     @ManyToOne()
     @JoinColumn(name = "user_id", referencedColumnName = "id")
-    User user;
+    private User user;
 
     @Column(name = "first")
-    Integer first;
+    private Integer first;
 
     @Column(name = "second")
-    Integer second;
+    private Integer second;
 
     @Column(name = "result")
-    Integer result;
+    private Integer result;
 
     @Column(name = "create_date")
-    LocalDateTime createDate;
+    private LocalDateTime createDate;
 
     @Enumerated(EnumType.STRING)
-    TypeEnum type;
+    private TypeEnum type;
+
+    // Ручной конструктор
+    public CalcEvent(
+            Long id,
+            User user,
+            Integer first,
+            Integer second,
+            Integer result,
+            LocalDateTime createDate,
+            TypeEnum type
+    ) {
+        this.id = id;
+        this.user = user != null ? copyUser(user) : null; // Создаём защитную копию
+        this.first = first;
+        this.second = second;
+        this.result = result;
+        this.createDate = createDate;
+        this.type = type;
+    }
+
+    // Защищенный геттер
+    public User getUser() {
+        return user != null ? copyUser(user) : null;
+    }
+
+    // Защищенный сеттер
+    public void setUser(User user) {
+        this.user = user != null ? copyUser(user) : null;
+    }
+
+    // Метод для создания защитной копии
+    private User copyUser(User original) {
+        return User.builder()
+                .id(original.getId())
+                .name(original.getName())
+                // ... другие поля
+                .build();
+    }
+
+    public static class CalcEventBuilder {
+        private User user;
+
+        public CalcEventBuilder user(User user) {
+            this.user = user != null ? copyUser(user) : null;
+            return this;
+        }
+
+        private User copyUser(User original) {
+            return User.builder()
+                    .id(original.getId())
+                    .name(original.getName())
+                    // ... другие поля
+                    .build();
+        }
+    }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o){ return true;}
-        if (o == null || getClass() != o.getClass()) {return false;}
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         CalcEvent calcEvent = (CalcEvent) o;
-        return Objects.equals(first, calcEvent.first) && Objects.equals(second, calcEvent.second) && result == calcEvent.result && Objects.equals(id, calcEvent.id) && Objects.equals(user, calcEvent.user) && Objects.equals(createDate, calcEvent.createDate) && Objects.equals(type, calcEvent.type);
+        return Objects.equals(first, calcEvent.first)
+                && Objects.equals(second, calcEvent.second)
+                && Objects.equals(result, calcEvent.result)
+                && Objects.equals(id, calcEvent.id)
+                && Objects.equals(user, calcEvent.user)
+                && Objects.equals(createDate, calcEvent.createDate)
+                && Objects.equals(type, calcEvent.type);
     }
 
     @Override
