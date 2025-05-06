@@ -30,7 +30,8 @@ buildscript {
 
 // --- Работа с переменными окружения (.env) ---
 
-val activeEnv = System.getenv("ENV") ?: "local" // 1. Определяем активное окружение // Устанавливаем переменную окружения, если она не задана явно
+val activeEnv = System.getenv("ENV")
+    ?: "local" // 1. Определяем активное окружение // Устанавливаем переменную окружения, если она не задана явно
 val envFiles = listOf(
     file("env/.env.$activeEnv"), // основной файл для окружения
     file(".env.example") // fallback-шаблон
@@ -208,7 +209,9 @@ tasks.withType<Test>().configureEach {
         )
         systemProperty(
             "spring.datasource.driver-class-name",
-            if (envProperties.getProperty("DB_URL")?.contains("h2") == true) "org.h2.Driver" else "org.postgresql.Driver"
+            if (envProperties.getProperty("DB_URL")
+                    ?.contains("h2") == true
+            ) "org.h2.Driver" else "org.postgresql.Driver"
         )
         systemProperty(
             "spring.datasource.username",
@@ -283,7 +286,8 @@ tasks.register<Zip>("archiveResources") {
     description = "Archives the resources folder into a ZIP file"
 
     val inputDir = file("src/main/resources")
-    val outputDir = layout.buildDirectory.dir("archives") // Связываем задачу(архивирования содержимое директории) с жизненным циклом (например, после сборки JAR)
+    val outputDir =
+        layout.buildDirectory.dir("archives") // Связываем задачу(архивирования содержимое директории) с жизненным циклом (например, после сборки JAR)
 
     inputs.dir(inputDir)
     outputs.file(outputDir.map { it.file("resources.zip") })
@@ -330,3 +334,48 @@ tasks.register("profile") {
         logger.lifecycle("DB_PASSWORD: ${envProperties.getProperty("DB_PASSWORD") ?: "default"}")
     }
 }
+
+tasks.test {
+    useJUnitPlatform()
+    systemProperty("spring.profiles.active", "test") // 🟢 активируем профиль test
+    systemProperty("ENV", "test") // Для dotenv плагина
+    systemProperty("spring.datasource.url", "jdbc:h2:mem:testdb")
+    systemProperty("spring.datasource.driver-class-name", "org.h2.Driver")
+}
+
+// ----------------------------------------------
+// Логгируем активные переменные среды при сборке
+// ----------------------------------------------
+gradle.taskGraph.whenReady {
+    val env = System.getenv("ENV") ?: "local" // или "develop" по умолчанию, если нужно
+
+    val envFile = file("env/.env.$env").takeIf { it.exists() }
+        ?: file("env/.env.example").takeIf { it.exists() }
+
+    val props = Properties()
+
+    if (envFile != null) {
+        println("✅ Load .env-file: ${envFile.name}")
+        envFile.inputStream().use { props.load(it) }
+    } else {
+        println("⚠️ .env-file not founded (ENV=$env)")
+    }
+
+    val springProfile = props.getProperty("SPRING_PROFILES_ACTIVE") ?: "not installed" //не установлен
+    val datasourceUrl = props.getProperty("SPRING_DATASOURCE_URL") ?: "not specified" // не указан
+    val dbType = when {
+        "h2" in datasourceUrl.lowercase() -> "H2"
+        "postgres" in datasourceUrl.lowercase() -> "PostgreSQL"
+        datasourceUrl != "не указан" -> "Unknown"
+        else -> "Datasource not set"
+    }
+
+    println()
+    println("===== Build Environment Information =====")
+    println("Active Profile        : $springProfile")
+    println("Datasource URL        : $datasourceUrl")
+    println("DB Type               : $dbType")
+    println("========================================")
+    println()
+}
+
