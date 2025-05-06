@@ -1,33 +1,41 @@
-package ru.job4j.develop.integration;
+package ru.job4j.develop.integration.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import ru.job4j.devops.CalcApplication;
 import ru.job4j.devops.models.User;
+import ru.job4j.devops.repository.CalcEventRepository;
 import ru.job4j.devops.repository.UserRepository;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import ru.job4j.devops.service.CalcEventService;
 
 @ActiveProfiles("integration")
 @SpringBootTest(
         classes = CalcApplication.class,
         webEnvironment = SpringBootTest.WebEnvironment.NONE
 )
-class UserRepositoryTest {
+public class CalcEventServiceIntegrationTest {
+
+    @Autowired
+    CalcEventService service;
+    @Autowired
+    private CalcEventRepository repository;
+    @Autowired
+    private UserRepository userRepository;
 
     private static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(
             "postgres:16-alpine"
     ).withReuse(true);
-
-    @Autowired
-    private UserRepository userRepository;
 
     @DynamicPropertySource
     public static void configureProperties(DynamicPropertyRegistry registry) {
@@ -48,14 +56,18 @@ class UserRepositoryTest {
 
     @Test
     public void whenSaveUser() {
+        int first = 3;
+        int second = 4;
         var user = new User();
         user.setName("Job4j");
+        var savedUser = userRepository.save(user);
 
-        userRepository.save(user);
+        var calcEvent = service.add(savedUser, first, second);
 
-        var foundUser = userRepository.findById(user.getId());
+        var foundEvent = repository.findById(calcEvent.getId());
 
-        assertThat(foundUser).isPresent();
-        assertThat(foundUser.get().getName()).isEqualTo("Job4j");
+        assertThat(foundEvent).isPresent();
+        assertThat(foundEvent.get().getUser().getName()).isEqualTo("Job4j");
+        assertEquals(calcEvent.getId(), foundEvent.get().getId());
     }
 }

@@ -343,6 +343,16 @@ tasks.test {
     systemProperty("spring.datasource.driver-class-name", "org.h2.Driver")
 }
 
+// -----Integration Test Task ----//
+tasks.named<Test>("integrationTest") {
+    useJUnitPlatform()
+    systemProperty("spring.profiles.active", "integration")
+}
+
+tasks.named<ProcessResources>("processIntegrationTestResources") {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
 // ----------------------------------------------
 // Логгируем активные переменные среды при сборке
 // ----------------------------------------------

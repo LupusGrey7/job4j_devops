@@ -16,4 +16,8 @@
              author="Petr Arsentev"
              relativeToChangelogFile="true"/>
 
+    <include file="changeset/20250506_004-ddl-create-table-calc-event.sql"
+             author="Petr Arsentev"
+             relativeToChangelogFile="true"/>
+
 </databaseChangeLog>
