@@ -124,6 +124,7 @@ dependencies {
     implementation(libs.liquibase.core)
     implementation(libs.postgresql)
     implementation(libs.h2)
+    implementation(libs.spring.kafka)
     add("liquibaseRuntime", libs.liquibase.core)
     add("liquibaseRuntime", libs.postgresql)
     add("liquibaseRuntime", libs.h2)
@@ -141,6 +142,14 @@ dependencies {
     testImplementation(libs.assertj.core)
     testImplementation(libs.h2)
     testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.testcontainers.kafka)
+    testImplementation(libs.awaitility)
+
+    // Для main sourceSet
+    compileOnly(libs.spotbugs.annotations)
+
+    // Для тестов (если нужно)
+    testCompileOnly(libs.spotbugs.annotations)
 
     // Интеграционные тесты
     integrationTestImplementation(libs.liquibase.core)
