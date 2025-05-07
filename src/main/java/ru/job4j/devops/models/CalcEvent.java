@@ -47,7 +47,7 @@ public class CalcEvent {
 
     /**
      * Ручной конструктор
-     * this.user = user != null ? copyUser(user) : null; // Создаём защитную копию
+     * this.user = user != null ? copyUser(user) : null; - Создаём защитную копию
      * @param id
      * @param user
      * @param first
