@@ -45,7 +45,17 @@ public class CalcEvent {
     @Enumerated(EnumType.STRING)
     private TypeEnum type;
 
-    // Ручной конструктор
+    /**
+     * Ручной конструктор
+     * this.user = user != null ? copyUser(user) : null; // Создаём защитную копию
+     * @param id
+     * @param user
+     * @param first
+     * @param second
+     * @param result
+     * @param createDate
+     * @param type
+     */
     public CalcEvent(
             Long id,
             User user,
@@ -56,7 +66,7 @@ public class CalcEvent {
             TypeEnum type
     ) {
         this.id = id;
-        this.user = user != null ? copyUser(user) : null; // Создаём защитную копию
+        this.user = user != null ? copyUser(user) : null;
         this.first = first;
         this.second = second;
         this.result = result;
@@ -64,22 +74,31 @@ public class CalcEvent {
         this.type = type;
     }
 
-    // Защищенный геттер
+    /**
+     * Защищенный геттер от мутационных операций
+     * @return User
+     */
     public User getUser() {
         return user != null ? copyUser(user) : null;
     }
 
-    // Защищенный сеттер
+    /**
+     * Защищенный сеттер от мутационных операций
+     * @param user
+     */
     public void setUser(User user) {
         this.user = user != null ? copyUser(user) : null;
     }
 
-    // Метод для создания защитной копии
+    /**
+     * Метод для создания защитной копии
+     * @param original
+     * @return User
+     */
     private User copyUser(User original) {
         return User.builder()
                 .id(original.getId())
                 .name(original.getName())
-                // ... другие поля
                 .build();
     }
 
@@ -95,7 +114,6 @@ public class CalcEvent {
             return User.builder()
                     .id(original.getId())
                     .name(original.getName())
-                    // ... другие поля
                     .build();
         }
     }

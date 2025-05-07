@@ -18,7 +18,7 @@ public class CalcEventService {
     private final CalcEventRepository repository;
 
     public CalcEvent add(User user, int first, int second) {
-        //validate params
+
         var createEvent = createCalcEvent(user, first, second);
 
         createEvent = repository.save(createEvent);
