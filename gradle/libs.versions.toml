@@ -17,9 +17,11 @@ picocli = "4.6.1"
 postgresql = "42.7.4"
 h2 = "2.3.230"
 dotenv = "4.0.0"
-testcontainers-postgresql = "1.20.4"
 spring-kafka = "3.3.3"
+testcontainers-postgresql = "1.20.4"
 testcontainers-kafka = "1.20.4"
+testcontainers-test = "1.20.4"
+testcontainers-junit = "1.20.4"
 awaitility = "4.3.0"
 
 [libraries] # — здесь описываются библиотеки и их версии.
@@ -37,9 +39,11 @@ logback-classic = { group = "ch.qos.logback", name = "logback-classic", version.
 picocli = { group = "info.picocli", name = "picocli", version.ref = "picocli" }
 postgresql = { group = "org.postgresql", name = "postgresql", version.ref = "postgresql" }
 h2 = { module = "com.h2database:h2", version.ref = "h2" }
+testcontainers-testcontainers = { group = "org.testcontainers", name = "testcontainers", version.ref = "testcontainers-test" }
 testcontainers-postgresql = { group = "org.testcontainers", name = "postgresql", version.ref = "testcontainers-postgresql" }
-spring-kafka = { group = "org.springframework.kafka", name = "spring-kafka", version.ref = "spring-kafka" }
 testcontainers-kafka = { group = "org.testcontainers", name = "kafka", version.ref = "testcontainers-kafka" }
+testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers-junit" }
+spring-kafka = { group = "org.springframework.kafka", name = "spring-kafka", version.ref = "spring-kafka" }
 awaitility = { group = "org.awaitility", name = "awaitility", version.ref = "awaitility" }
 spotbugs-annotations = { group = "com.github.spotbugs", name = "spotbugs-annotations", version.ref = "spotbugs-annotations" }
 

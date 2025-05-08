@@ -144,6 +144,8 @@ dependencies {
     testImplementation(libs.testcontainers.postgresql)
     testImplementation(libs.testcontainers.kafka)
     testImplementation(libs.awaitility)
+    // Testcontainers core + JUnit 5 support (обязательно для аннотаций @Testcontainers, @Container)
+    testImplementation(libs.testcontainers.junit.jupiter)
 
     // Для main sourceSet
     compileOnly(libs.spotbugs.annotations)
@@ -155,7 +157,9 @@ dependencies {
     integrationTestImplementation(libs.liquibase.core)
     integrationTestImplementation(libs.postgresql)
     integrationTestImplementation(libs.h2)
+    integrationTestImplementation(libs.testcontainers.testcontainers)
     integrationTestImplementation(libs.testcontainers.postgresql)
+    integrationTestImplementation(libs.testcontainers.kafka)
 }
 
 // --- Liquibase ---
@@ -256,6 +260,8 @@ tasks.spotbugsMain {
 
 tasks.test {
     finalizedBy(tasks.spotbugsMain)
+    useJUnitPlatform()
+    maxParallelForks = 1 // ⛔️ Один поток
 }
 
 // --- Прочие задачи ---

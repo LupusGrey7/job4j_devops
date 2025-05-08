@@ -1,34 +1,22 @@
 package ru.job4j.develop.integration;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.springframework.test.context.ActiveProfiles;
+import ru.job4j.develop.integration.config.ContainersConfig;
 
-public class TestContainersTest {
+@ActiveProfiles("integration")
+public class TestContainersTest extends ContainersConfig {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TestContainersTest.class);
 
-    private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
-            "postgres:16-alpine"
-    );
-
-    @BeforeAll
-    static void beforeAll() {
-        POSTGRES.start();
-    }
-
-    @AfterAll
-    static void afterAll() {
-        POSTGRES.stop();
-    }
-
     @Test
     public void whenSaveUser() {
-        LOGGER.info("DB URL: {}", POSTGRES.getJdbcUrl());
-        LOGGER.info("DB User name: {}", POSTGRES.getUsername());
-        LOGGER.info("DB Password: {}",  POSTGRES.getPassword());
+        LOGGER.info("DB URL: {}", ContainersConfig.POSTGRES_DB);
+        LOGGER.info("DB User name: {}", ContainersConfig.POSTGRES_USER);
+        LOGGER.info("DB User password: {}", ContainersConfig.POSTGRES_PASSWORD);
+        LOGGER.info("DB POSTGRES_PORT: {}", ContainersConfig.POSTGRES_PORT);
+        LOGGER.info("Kafka URL: {}", ContainersConfig.KAFKA_PORT);
     }
 }
