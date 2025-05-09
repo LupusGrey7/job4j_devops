@@ -3,8 +3,7 @@ pipeline {
 
     // ➤➤➤ Добавляем блок environment для переменных кэша
     environment {
-        // 1. Настройки кэша (как у вас)
-        // Логин/пароль из хранилища секретов Jenkins (рекомендуемый способ)
+        // 1. Настройки кэша (как у вас)// Логин/пароль из хранилища секретов Jenkins (рекомендуемый способ)
         GRADLE_REMOTE_CACHE_USERNAME = "${env.GRADLE_REMOTE_CACHE_USERNAME}"
         GRADLE_REMOTE_CACHE_PASSWORD = "${env.GRADLE_REMOTE_CACHE_PASSWORD}"
         // URL кэша из системных переменных Jenkins (если задан)
@@ -14,7 +13,7 @@ pipeline {
         ENV = "${params.ENV ?: 'develop'}" // Делаем параметризуемым
         DOTENV_BASE_DIR = "/var/agent-jdk21/env" // Базовая директория
         DOTENV_FILE = "${DOTENV_BASE_DIR}/.env.${ENV}" // Полный путь
-}
+
         // 3. Важные флаги (можно переопределять в параметрах pipeline)
         SKIP_TESTS = "${params.SKIP_TESTS ?: false}"
     }
@@ -134,7 +133,7 @@ pipeline {
         }
     }
 
-    // ➤➤➤ Добавляем блок post для отправки уведомлений в Telegram
+    // Добавляем блок post для отправки уведомлений в Telegram
     post {
         always {
             script {
@@ -153,6 +152,8 @@ pipeline {
                 if (fileExists('.env')) {
                     sh 'rm -f .env'
                 }
+            }
+        }
 
         success {
             echo "Build succeeded!"
