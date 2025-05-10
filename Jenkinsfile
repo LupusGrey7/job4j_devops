@@ -3,6 +3,8 @@ pipeline {
 
     // ➤➤➤ Добавляем блок environment для переменных кэша
     environment {
+        JAVA_HOME = '/opt/java/openjdk' // Путь из контейнера agent1
+
         // 1. Настройки кэша (как у вас)// Логин/пароль из хранилища секретов Jenkins (рекомендуемый способ)
         GRADLE_REMOTE_CACHE_USERNAME = "${env.GRADLE_REMOTE_CACHE_USERNAME}"
         GRADLE_REMOTE_CACHE_PASSWORD = "${env.GRADLE_REMOTE_CACHE_PASSWORD}"
