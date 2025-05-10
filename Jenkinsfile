@@ -112,8 +112,8 @@ pipeline {
                             "clean build --build-cache --refresh-dependencies -x test " +
                             "-Pdotenv.filename=${DOTENV_FILE} " +
                             "-Dgradle.cache.remote.url=${GRADLE_REMOTE_CACHE_URL} " +
-                            "-Dgradle.cache.remote.username=${GRADLE_REMOTE_CACHE_CREDS_USR} " +
-                            "-Dgradle.cache.remote.password=${GRADLE_REMOTE_CACHE_CREDS_PSW}",
+                            "-Dgradle.cache.remote.username=${GRADLE_REMOTE_CACHE_USERNAME} " +
+                            "-Dgradle.cache.remote.password=${GRADLE_REMOTE_CACHE_PASSWORD}",
                             'Build FAILED',
                             DOTENV_FILE
                         )
