@@ -33,7 +33,7 @@ pipeline {
 
     tools {
         git 'Default'
-        jdk 'jdk21' // Явно указываем JDK
+        jdk 'jdk-17' // Явно указываем JDK
     }
 
     stages {
