@@ -111,7 +111,7 @@ pipeline {
                         // Унифицированный вызов через runGradleTask
                         runGradleTask(
                             "clean build --build-cache --refresh-dependencies -x test " +
-                            "-Dorg.gradle.caching.remote.allow-insecure-protocol=true " + // Разрешить HTTP не требовать HTTPS
+                            "-Dorg.gradle.caching.http.HttpBuildCache.allowInsecureProtocol=true " + //✅ Исправлено- Разрешить HTTP не требовать HTTPS
                             "-Pdotenv.filename=${DOTENV_FILE} " +
                             "-Dgradle.cache.remote.url=${GRADLE_REMOTE_CACHE_URL}",
 //                             "-Dgradle.cache.remote.username=${GRADLE_REMOTE_CACHE_USERNAME} " +
