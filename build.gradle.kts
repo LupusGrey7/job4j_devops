@@ -65,8 +65,7 @@ tasks.register("validateEnv") {
     }
 }
 
-// --- Конфигурация source sets ---
-// объект для хранения исходного интеграционных тестов.
+// ----- Конфигурация sourceSets для интеграционных тестов ----- // -отключим для CI\CD Jenkins Server
 val integrationTest by sourceSets.creating {
     java {
         srcDir("src/integrationTest/java")
@@ -74,11 +73,11 @@ val integrationTest by sourceSets.creating {
     resources {
         srcDir("src/integrationTest/resources")
     }
-    compileClasspath += sourceSets.main.get().output + sourceSets.test.get().output
-    runtimeClasspath += sourceSets.main.get().output + sourceSets.test.get().output
+    compileClasspath += sourceSets["main"].output + sourceSets["test"].output
+    runtimeClasspath += output + compileClasspath
 }
 
-// зависимости для тестирования
+// ----- Конфигурация зависимостей для интеграционных тестов ----- //
 val integrationTestImplementation by configurations.getting {
     extendsFrom(configurations["testImplementation"])
 }
@@ -241,9 +240,19 @@ tasks.withType<Test>().configureEach {
 tasks.register<Test>("integrationTest") {
     description = "Runs integration tests"
     group = "verification"
+
     testClassesDirs = integrationTest.output.classesDirs
     classpath = integrationTest.runtimeClasspath
-    shouldRunAfter(tasks.test)
+
+    useJUnitPlatform() // Используем JUnit 5
+    systemProperty("spring.profiles.active", "integration") // Подключаем нужный профиль
+
+    // Запускать только если переменная CI отсутствует
+    onlyIf {
+        !System.getenv().containsKey("CI")
+    }
+
+    shouldRunAfter(tasks.named("test")) // Убедимся, что запускается после обычных тестов
 }
 tasks.check {
     dependsOn("integrationTest")
@@ -362,6 +371,10 @@ tasks.test {
 tasks.named<Test>("integrationTest") {
     useJUnitPlatform()
     systemProperty("spring.profiles.active", "integration")
+    onlyIf {
+        // Запускаем только вне CI, например, если нет переменной окружения
+        !System.getenv().containsKey("CI")
+    }
 }
 
 tasks.named<ProcessResources>("processIntegrationTestResources") {
