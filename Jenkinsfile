@@ -2,16 +2,8 @@ pipeline {
     agent { label 'agent1' }
 
     parameters {
-        choice(
-            name: 'ENV',
-            choices: ['develop', 'ci', 'stage'],
-            description: 'Выберите окружение'
-        )
-        booleanParam(
-            name: 'SKIP_TESTS',
-            defaultValue: false,
-            description: 'Пропустить выполнение тестов?'
-        )
+        string(name: 'ENV', defaultValue: 'develop', description: 'Target environment (develop, staging, production)')
+        booleanParam(name: 'SKIP_TESTS', defaultValue: false, description: 'Skip tests?')
     }
 
     // ➤➤➤ Добавляем блок environment для переменных кэша
@@ -19,17 +11,24 @@ pipeline {
         // 1. Путь из контейнера agent1
         JAVA_HOME = '/opt/java/openjdk'
 
-    // 4. Настройки кэша (как у вас)// Логин/пароль из хранилища секретов Jenkins (рекомендуемый способ)
- //     GRADLE_REMOTE_CACHE_USERNAME = "${env.GRADLE_REMOTE_CACHE_USERNAME}"
- //     GRADLE_REMOTE_CACHE_PASSWORD = "${env.GRADLE_REMOTE_CACHE_PASSWORD}"
+        // 2. Окружение и .env файл
+        ENV = "${params.ENV ?: 'develop'}" // Делаем параметризуемым
+        DOTENV_BASE_DIR = "/var/agent-jdk21/env" // Базовая директория
+        DOTENV_FILE = "${DOTENV_BASE_DIR}/.env.${ENV}" // Полный путь
 
-         // 5.URL кэша из системных переменных Jenkins (если задан)
-        GRADLE_REMOTE_CACHE_URL = "${env.GRADLE_REMOTE_CACHE_URL ?: 'http://192.168.0.109:5071/'}" // Без /cache/
+        // 3. Важные флаги (можно переопределять в параметрах pipeline)
+        SKIP_TESTS = "${params.SKIP_TESTS ?: false}"
+
+        // 4. Настройки кэша (как у вас)// Логин/пароль из хранилища секретов Jenkins (рекомендуемый способ)
+//         GRADLE_REMOTE_CACHE_USERNAME = "${env.GRADLE_REMOTE_CACHE_USERNAME}"
+//         GRADLE_REMOTE_CACHE_PASSWORD = "${env.GRADLE_REMOTE_CACHE_PASSWORD}"
+        // 5.URL кэша из системных переменных Jenkins (если задан)
+        GRADLE_REMOTE_CACHE_URL = "${env.GRADLE_REMOTE_CACHE_URL ?: 'http://192.168.0.109:5071/'}"  // Без /cache/
     }
 
     tools {
         git 'Default'
-        // jdk 'jdk-21' // Можно включить при необходимости
+       // jdk 'jdk-21' // Явно указываем JDK
     }
 
     stages {
@@ -42,6 +41,7 @@ pipeline {
                     }
                     //В данном случае используется команда echo для вывода текста.
                     echo "🔄 Loading gradleUtils..."
+
                     // Сначала загружаем
                     runGradleTask = load 'scripts/gradleUtils.groovy'
                     sh 'chmod +x ./gradlew'
@@ -51,17 +51,10 @@ pipeline {
                         error "❌ runGradleTask is NULL! Did you forget to commit scripts/gradleUtils.groovy?"
                     }
 
-                    // Копируем нужный .env файл прямо в корень проекта
-                    def dotenvSource = "env/.env.${params.ENV}"
-                    echo "ℹ️ Copying ${dotenvSource} to .env"
-                    if (!fileExists(dotenvSource)) {
-                        error "❌ ${dotenvSource} not found!"
-                    }
-                    sh "cp ${dotenvSource} .env"
-
+                    // Логирование информации о среде
                     echo """
                     ⚙️ Environment Info:
-                    - ENV: ${params.ENV}
+                    - ENV: ${ENV}
                     - Java: ${JAVA_HOME}
                     - Gradle Cache: ${GRADLE_REMOTE_CACHE_URL}
                     """
@@ -72,7 +65,7 @@ pipeline {
         stage('Checkstyle') {
             steps {
                 script {
-                    runGradleTask('checkstyleMain checkstyleTest', 'Checkstyle FAILED')
+                    runGradleTask('checkstyleMain checkstyleTest', 'Checkstyle FAILED', DOTENV_FILE)
                 }
             }
         }
@@ -80,7 +73,7 @@ pipeline {
         stage('Compile') {
             steps {
                 script {
-                    runGradleTask('compileJava', 'Compilation FAILED')
+                    runGradleTask('compileJava', 'Compilation FAILED', DOTENV_FILE)
                 }
             }
         }
@@ -91,7 +84,7 @@ pipeline {
             }
             steps {
                 script {
-                    runGradleTask('test', 'Tests FAILED')
+                    runGradleTask('test', 'Tests FAILED', DOTENV_FILE)
                 }
             }
         }
@@ -99,7 +92,7 @@ pipeline {
         stage('Code Coverage') {
             steps {
                 script {
-                    runGradleTask('jacocoTestReport jacocoTestCoverageVerification', 'Code coverage FAILED')
+                    runGradleTask('jacocoTestReport jacocoTestCoverageVerification', 'Code coverage FAILED', DOTENV_FILE)
                 }
             }
         }
@@ -108,6 +101,7 @@ pipeline {
             steps {
                 script {
                     try {
+                        // Унифицированный вызов через runGradleTask
                         runGradleTask(
                             "clean build --build-cache --refresh-dependencies -x test " +
                             "-Dorg.gradle.caching.http.HttpBuildCache.allowInsecureProtocol=true " + //✅ Исправлено- Разрешить HTTP не требовать HTTPS
@@ -128,11 +122,15 @@ pipeline {
         }
 
         stage('Update DB') {
-            steps {
-                script {
-                    runGradleTask('update', 'Update DB FAILED')
-                }
-            }
+             steps {
+                 script {
+                     runGradleTask(
+                         "liquibaseUpdate -Pdotenv.filename=${DOTENV_FILE}",
+                         'Update DB FAILED',
+                         DOTENV_FILE
+                     )
+                 }
+             }
         }
     }
 
@@ -146,7 +144,7 @@ pipeline {
                 Build #: ${currentBuild.number}
                 Status: ${currentBuild.currentResult}
                 Duration: ${currentBuild.durationString}
-                Environment: ${params.ENV}
+                Environment: ${ENV}
                 """.stripIndent()
 
                 telegramSend(message: buildInfo)
@@ -154,23 +152,24 @@ pipeline {
                 // Очистка .env файла если он был скопирован
                 if (fileExists('.env')) {
                     sh 'rm -f .env'
-                    echo "🗑️ Removed temporary .env"
                 }
             }
         }
+
         success {
             echo "Build succeeded!"
         }
+
         failure {
             echo "Build failed!"
         }
+
         unstable {
             echo "Build unstable!"
             telegramSend(message: "⚠️ Build UNSTABLE: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
         }
     }
 }
-
 
 // шаблон
 //pipeline {
