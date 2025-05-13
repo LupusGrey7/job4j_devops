@@ -120,7 +120,7 @@ pipeline {
                 }
             }
         }
-
+        //Задача liquibaseUpdate автоматически создается плагином Liquibase Gradle Plugin при правильной настройке.
         stage('Update DB') {
              steps {
                  script {

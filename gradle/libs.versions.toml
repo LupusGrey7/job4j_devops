@@ -54,5 +54,5 @@ spotbugs-annotations = { group = "com.github.spotbugs", name = "spotbugs-annotat
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
 spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
 spotbugs = { id = "com.github.spotbugs", version.ref = "spotbugs" }
-liquibase = { id = "org.liquibase.gradle", version.ref = "liquibase-gradle" }
+liquibase-gradle = { id = "org.liquibase.gradle", version.ref = "liquibase-gradle" }
 dotenv = { id = "co.uzzu.dotenv.gradle", version.ref = "dotenv" }

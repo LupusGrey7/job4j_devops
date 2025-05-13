@@ -1,6 +1,7 @@
 import java.io.FileInputStream
 import java.util.*
 
+// --- Plugins ---
 plugins {
     checkstyle
     java
@@ -8,7 +9,7 @@ plugins {
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
     alias(libs.plugins.spotbugs) //Подключение SpotBugs для статического анализа кода
-    alias(libs.plugins.liquibase)
+    alias(libs.plugins.liquibase.gradle) // Подключаем плагин Liquibase для работы с миграциями базы данных
     alias(libs.plugins.dotenv) // Подключаем плагин dotenv - для работы с переменными окружения
 }
 
