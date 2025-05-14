@@ -169,7 +169,11 @@ liquibase {
         val dbUrl = envProperties.getProperty("DB_URL") ?: "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1"
         val dbUser = envProperties.getProperty("DB_USERNAME") ?: "sa"
         val dbPass = envProperties.getProperty("DB_PASSWORD") ?: ""
-        val changelogPath = "${projectDir}/src/main/resources/db/changelog/db.changelog-master.xml"
+        val changelogRelativePath = "db/changelog/db.changelog-master.xml"
+        val searchPath = file("src/main/resources").absolutePath
+
+        println("Liquibase changelogFile = $changelogRelativePath")
+        println("Liquibase searchPath = $searchPath")
 
         this.arguments = mapOf(
             "logLevel" to "info",
@@ -177,12 +181,13 @@ liquibase {
             "url" to dbUrl,
             "username" to dbUser,
             "password" to dbPass,
-            "classpath" to "src/main/resources",
-            "changelogFile" to changelogPath
+            "searchPath" to searchPath,
+            "changelogFile" to changelogRelativePath
         )
     }
     runList = "main"
 }
+
 
 // --- Jacoco ---
 
