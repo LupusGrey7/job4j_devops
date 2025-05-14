@@ -169,6 +169,7 @@ liquibase {
         val dbUrl = envProperties.getProperty("DB_URL") ?: "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1"
         val dbUser = envProperties.getProperty("DB_USERNAME") ?: "sa"
         val dbPass = envProperties.getProperty("DB_PASSWORD") ?: ""
+        val changelogPath = "${projectDir}/src/main/resources/db/changelog/db.changelog-master.xml"
 
         this.arguments = mapOf(
             "logLevel" to "info",
@@ -177,7 +178,7 @@ liquibase {
             "username" to dbUser,
             "password" to dbPass,
             "classpath" to "src/main/resources",
-            "changelogFile" to "db/changelog/db.changelog-master.xml"
+            "changelogFile" to changelogPath
         )
     }
     runList = "main"
