@@ -170,7 +170,7 @@ liquibase {
         val dbUser = envProperties.getProperty("DB_USERNAME") ?: "sa"
         val dbPass = envProperties.getProperty("DB_PASSWORD") ?: ""
 
-        arguments = mapOf(
+        this.arguments = mapOf(
             "logLevel" to "info",
             "driver" to if (dbUrl.contains("h2")) "org.h2.Driver" else "org.postgresql.Driver",
             "url" to dbUrl,
@@ -237,6 +237,12 @@ tasks.withType<Test>().configureEach {
     }
 }
 
+// --- Liquibase  Tasks ---
+tasks.register("liquibaseUpdate") {
+    dependsOn(tasks.named("update"))
+}
+
+// --- Интеграционные тесты ---
 //отдельную задачу для запуска интеграционных тестов
 tasks.register<Test>("integrationTest") {
     description = "Runs integration tests"
