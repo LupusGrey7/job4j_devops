@@ -378,11 +378,17 @@ tasks.test {
     systemProperty("ENV", "test") // Чтобы dotenv взял .env.test
 //    systemProperty("spring.datasource.url", "jdbc:h2:mem:testdb")
 //    systemProperty("spring.datasource.driver-class-name", "org.h2.Driver")
-    doFirst {
-        val envFile = file("env/.env.test")
-        val target = file(".env")
-        println("Copying $envFile to $target")
-        target.writeText(envFile.readText())
+    val envFile = file("env/.env.test").takeIf { it.exists() }
+        ?: file("env/.env.example").takeIf { it.exists() }
+
+    if (envFile != null) {
+        println("✅ Load .env-file: ${envFile.name}")
+        envFile.inputStream().use { envProperties.load(it) }
+    }
+
+    // 💡 Важно: пробрасываем каждую переменную в систему JVM
+    envProperties.forEach { (key, value) ->
+        systemProperty(key.toString(), value.toString())
     }
 }
 

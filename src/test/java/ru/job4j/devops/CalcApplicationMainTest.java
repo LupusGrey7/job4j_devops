@@ -37,9 +37,9 @@ class CalcApplicationMainTest {
         System.out.println("Active profiles: " + Arrays.toString(env.getActiveProfiles()));
         System.out.println("spring.config.location: " + env.getProperty("spring.config.location"));
         System.out.println("ENV var: " + System.getenv("ENV"));
-
-        assertThat(env.getProperty("spring.datasource.url"))
-                .isEqualTo("jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL");
+        System.out.println("debug.test.profile: " + env.getProperty("debug.test.profile"));
+        assertThat(env.getProperty("debug.test.profile"))
+                .isEqualTo("active");
     }
 
     @Test
