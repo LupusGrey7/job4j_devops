@@ -20,4 +20,8 @@
              author="Petr Arsentev"
              relativeToChangelogFile="true"/>
 
+    <include file="changeset/20250522_005_ddl_create_result.sql"
+             author="Petr Arsentev"
+             relativeToChangelogFile="true"/>
+
 </databaseChangeLog>

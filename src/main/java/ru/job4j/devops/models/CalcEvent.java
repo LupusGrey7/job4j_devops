@@ -43,6 +43,7 @@ public class CalcEvent {
     private LocalDateTime createDate;
 
     @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "varchar")
     private TypeEnum type;
 
     /**

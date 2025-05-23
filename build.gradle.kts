@@ -60,7 +60,7 @@ tasks.register("validateEnv") {
             logger.warn("No .env file loaded. Using default database settings.")
         } else {
             logger.lifecycle("✅ Environment configuration:")
-            logger.lifecycle("   DB_URL=${envProperties.getProperty("DB_URL") ?: "default"}")
+            logger.lifecycle("   SPRING_DATASOURCE_URL=${envProperties.getProperty("SPRING_DATASOURCE_URL") ?: "default"}")
             logger.lifecycle("   DB_USER=${envProperties.getProperty("DB_USERNAME") ?: "default"}")
         }
     }
@@ -166,7 +166,7 @@ dependencies {
 // Liquibase runtime dependencies (настроим профиль для Liquibase)+ добавили ENV из файла .env.example для локального окружения (пример "DB_USERNAME")
 liquibase {
     activities.register("main") {
-        val dbUrl = envProperties.getProperty("DB_URL") ?: "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1"
+        val dbUrl = envProperties.getProperty("SPRING_DATASOURCE_URL") ?: "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1"
         val dbUser = envProperties.getProperty("DB_USERNAME") ?: "sa"
         val dbPass = envProperties.getProperty("DB_PASSWORD") ?: ""
         val changelogRelativePath = "db/changelog/db.changelog-master.xml"
@@ -224,11 +224,11 @@ tasks.withType<Test>().configureEach {
     } else {
         systemProperty(
             "spring.datasource.url",
-            envProperties.getProperty("DB_URL") ?: "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1"
+            envProperties.getProperty("SPRING_DATASOURCE_URL") ?: "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1"
         )
         systemProperty(
             "spring.datasource.driver-class-name",
-            if (envProperties.getProperty("DB_URL")
+            if (envProperties.getProperty("SPRING_DATASOURCE_URL")
                     ?.contains("h2") == true
             ) "org.h2.Driver" else "org.postgresql.Driver"
         )
@@ -366,7 +366,7 @@ tasks.register("profile") {
             ?: project.property("springProfilesActive") ?: "default"
 
         logger.lifecycle("Active profile: $activeProfile")
-        logger.lifecycle("DB_URL: ${envProperties.getProperty("DB_URL") ?: "default"}")
+        logger.lifecycle("SPRING_DATASOURCE_URL: ${envProperties.getProperty("SPRING_DATASOURCE_URL") ?: "default"}")
         logger.lifecycle("DB_USERNAME: ${envProperties.getProperty("DB_USERNAME") ?: "default"}")
         logger.lifecycle("DB_PASSWORD: ${envProperties.getProperty("DB_PASSWORD") ?: "default"}")
     }
@@ -375,9 +375,15 @@ tasks.register("profile") {
 tasks.test {
     useJUnitPlatform()
     systemProperty("spring.profiles.active", "test") // 🟢 активируем профиль test
-    systemProperty("ENV", "test") // Для dotenv плагина
-    systemProperty("spring.datasource.url", "jdbc:h2:mem:testdb")
-    systemProperty("spring.datasource.driver-class-name", "org.h2.Driver")
+    systemProperty("ENV", "test") // Чтобы dotenv взял .env.test
+//    systemProperty("spring.datasource.url", "jdbc:h2:mem:testdb")
+//    systemProperty("spring.datasource.driver-class-name", "org.h2.Driver")
+    doFirst {
+        val envFile = file("env/.env.test")
+        val target = file(".env")
+        println("Copying $envFile to $target")
+        target.writeText(envFile.readText())
+    }
 }
 
 // -----Integration Test Task ----//
@@ -398,22 +404,22 @@ tasks.named<ProcessResources>("processIntegrationTestResources") {
 // Логгируем активные переменные среды при сборке
 // ----------------------------------------------
 gradle.taskGraph.whenReady {
-    val env = System.getenv("ENV") ?: "local" // или "develop" по умолчанию, если нужно
+//    val env = System.getenv("ENV") ?: "local" // или "develop" по умолчанию, если нужно
+//
+//    val envFile = file("env/.env.$env").takeIf { it.exists() }
+//        ?: file("env/.env.example").takeIf { it.exists() }
+//
+//    val props = Properties()
+//
+//    if (envFile != null) {
+//        println("✅ Load .env-file: ${envFile.name}")
+//        envFile.inputStream().use { props.load(it) }
+//    } else {
+//        println("⚠️ .env-file not founded (ENV=$env)")
+//    }
 
-    val envFile = file("env/.env.$env").takeIf { it.exists() }
-        ?: file("env/.env.example").takeIf { it.exists() }
-
-    val props = Properties()
-
-    if (envFile != null) {
-        println("✅ Load .env-file: ${envFile.name}")
-        envFile.inputStream().use { props.load(it) }
-    } else {
-        println("⚠️ .env-file not founded (ENV=$env)")
-    }
-
-    val springProfile = props.getProperty("SPRING_PROFILES_ACTIVE") ?: "not installed" //не установлен
-    val datasourceUrl = props.getProperty("SPRING_DATASOURCE_URL") ?: "not specified" // не указан
+    val springProfile = envProperties.getProperty("SPRING_PROFILES_ACTIVE") ?: "not installed" //не установлен
+    val datasourceUrl = envProperties.getProperty("SPRING_DATASOURCE_URL") ?: "not specified" // не указан
     val dbType = when {
         "h2" in datasourceUrl.lowercase() -> "H2"
         "postgres" in datasourceUrl.lowercase() -> "PostgreSQL"
@@ -429,4 +435,3 @@ gradle.taskGraph.whenReady {
     println("========================================")
     println()
 }
-
