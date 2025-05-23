@@ -20,6 +20,7 @@ public class ResultServiceImpl implements ResultService {
     @Override
     public Result save(Result result) {
         resultRepository.save(result);
+        log.debug("Create new Result with ID: {}", result);
         return result;
     }
 

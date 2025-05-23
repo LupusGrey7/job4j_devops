@@ -119,7 +119,7 @@ dependencies {
     // Core
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.boot.starter.data.jpa)
-
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
     // Liquibase
     implementation(libs.liquibase.core)
     implementation(libs.postgresql)
