@@ -1,32 +1,49 @@
 # Этап сборки
 FROM gradle:8.11.1-jdk21 AS builder
-
+RUN mkdir job4j_devops
 WORKDIR /job4j_devops
 
-# 1. Копируем ВСЕ необходимые файлы (включая конфиги checkstyle и settings.gradle.kts, если есть)
-COPY gradle ./gradle
+# 1. Копируем Gradle wrapper и конфиги
+COPY gradle/libs.versions.toml ./gradle/libs.versions.toml
 COPY build.gradle.kts gradle.properties ./
 COPY settings.gradle.kts ./settings.gradle.kts
+# 🆕 Добавим это, если у тебя есть version catalog
+COPY gradle/libs.versions.toml ./gradle/libs.versions.toml
+
+# 🆕 2. Копируем исходники и конфиги( buildSrc - чаще всего используется для кастомных плагинов)
 COPY src ./src
+COPY config/checkstyle/checkstyle.xml ./config/checkstyle/checkstyle.xml
+
+# 3. Копируем buildSrc (если есть кастомные плагины в Градл и папка в корне проекта называется buildSrc)
+#COPY buildSrc ./buildSrc
+
 # Копируем конфигурацию Checkstyle, если она есть
 COPY config/checkstyle/checkstyle.xml ./config/checkstyle/checkstyle.xml
 
-# 2. Временно отключаем remote cache в settings.gradle.kts (если есть)
+# 4. Копируем .env-файлы
+COPY env/.env.local ./env/.env.local
+COPY env/.env.develop ./env/.env.develop
+COPY .env.example ./.env.example
+
+# 5. Устанавливаем переменную окружения
+ENV ENV=local
+
+# 6. Временно отключаем remote cache в settings.gradle.kts (если есть)
 RUN if [ -f settings.gradle.kts ]; then sed -i '/remote(HttpBuildCache::class)/,/}/d' settings.gradle.kts; fi
-# 2. Временно отключаем checkstyle и remote cache
+# 6.1. Временно отключаем checkstyle и remote cache
 #RUN sed -i '/checkstyleMain/d' build.gradle.kts && \
  #   if [ -f settings.gradle.kts ]; then sed -i '/remote(HttpBuildCache::class)/,/}/d' settings.gradle.kts; fi
 
-# 3. Скачиваем зависимости
+# 7. Скачиваем зависимости
 RUN gradle --no-daemon dependencies
 
-# 4. Собираем проект (отключаем тесты и checkstyle)
-RUN gradle --no-daemon build -x test -x checkstyleMain -x checkstyleTest
+# 8. Собираем проект (отключаем при сборке в докер образ тесты и checkstyle\Интеграционные тесты)
+RUN gradle --no-daemon build -x test -x checkstyleMain -x checkstyleTest -x integrationTest
 
-# 5. Проверяем наличие JAR-файла
+# 9. Проверяем результат - Проверяем наличие JAR-файла
 RUN ls -l /job4j_devops/build/libs/
 
-# 6. Анализ зависимостей
+# 10. Анализ зависимостей
 RUN jdeps --ignore-missing-deps -q \
     --recursive \
     --multi-release 21 \
@@ -34,10 +51,10 @@ RUN jdeps --ignore-missing-deps -q \
     --class-path 'BOOT-INF/lib/*' \
     /job4j_devops/build/libs/DevOps-1.0.0.jar > deps.info
 
-# 6.1. Отладка: выводим содержимое deps.info
+# 10.1. Отладка: выводим содержимое deps.info
 RUN cat deps.info
 
-# 7. Создаем slim JRE с дополнительными модулями
+# 11. Создаем slim JRE с дополнительными модулями
 RUN jlink \
     --add-modules $(cat deps.info),jdk.crypto.ec,java.instrument,java.security.jgss,java.sql,java.management,java.naming,java.desktop,jdk.unsupported \
     --strip-debug \
@@ -46,24 +63,24 @@ RUN jlink \
     --no-man-pages \
     --output /slim-jre
 
-# 7.1. Проверяем наличие slim JRE
+# 11.1. Проверяем наличие slim JRE
 RUN ls -l /slim-jre/bin/
 
-# 7.2. Проверяем наличие JAR-файла
+# 11.2. Проверяем наличие JAR-файла
 RUN ls -l /job4j_devops/build/libs/
 
 # Финальный образ
 FROM debian:bookworm-slim
 
-# 8. Настройка переменных среды
+# 12. Установка переменных среды
 ENV JAVA_HOME=/opt/slim-jre
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
-# 9. Копируем JRE и приложение
+# 13. Копируем JRE и приложение
 COPY --from=builder /slim-jre $JAVA_HOME
 COPY --from=builder /job4j_devops/build/libs/DevOps-1.0.0.jar /job4j_devops/DevOps-1.0.0.jar
 
-# 10. Настройки для запуска
+# 14. Настройки для запуска
 WORKDIR /job4j_devops
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "DevOps-1.0.0.jar"]
