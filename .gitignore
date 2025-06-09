@@ -5,6 +5,23 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 lib/*
+*.log
+*.log.*
+*.
+
+### Eclipse ###
+.eclipselink
+.eclipselink.xml
+
+### Maven ###
+target/
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### Gradle ###
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
 
 ### STS ###
 .apt_generated
