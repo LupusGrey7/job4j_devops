@@ -50,6 +50,14 @@ public class CalcController {
     @PostMapping("/times")
     public ResponseEntity<Result> times(@RequestBody TwoArgs twoArgs) {
         var result = twoArgs.getFirst() * twoArgs.getSecond();
-        return ResponseEntity.ok(new Result(result));
+        var op = "*";
+        var rsl = new Result(result);
+        rsl.setId(1L);
+        rsl.setFirstArg(twoArgs.getFirst());
+        rsl.setSecondArg(twoArgs.getSecond());
+        rsl.setOperation(op);
+        rsl.setCreateDate(LocalDate.now());
+        System.out.println("------> rsl: " + rsl);
+        return ResponseEntity.ok(rsl);
     }
 }
