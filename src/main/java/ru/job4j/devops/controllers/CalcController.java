@@ -1,14 +1,13 @@
 package ru.job4j.devops.controllers;
 
 import lombok.AllArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.job4j.devops.models.Result;
 import ru.job4j.devops.models.TwoArgs;
 import ru.job4j.devops.service.ResultService;
-import ru.job4j.devops.service.impl.ResultServiceImpl;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -17,7 +16,7 @@ import java.util.List;
 @RequestMapping("calc")
 @AllArgsConstructor
 public class CalcController {
-
+    private final Logger logger = LoggerFactory.getLogger(CalcController.class);
     private final ResultService resultService;
 
     @GetMapping("/")
@@ -32,7 +31,7 @@ public class CalcController {
 
     @PostMapping("/summarise")
     public ResponseEntity<Result> summarise(@RequestBody TwoArgs twoArgs) {
-        System.out.println("------> twoArgs: " + twoArgs);
+        logger.debug("------> Arg for /summarise IS  TwoArgs: {}", twoArgs);
 
         var result = new Result();
         result.setFirstArg(twoArgs.getFirst());
@@ -40,10 +39,10 @@ public class CalcController {
         result.setResult(twoArgs.getFirst() + twoArgs.getSecond());
         result.setOperation("+");
         result.setCreateDate(LocalDate.now());
-        System.out.println("------> result: " + result);
-        var res = resultService.save(result);
+        logger.info("------> result: {}", result);
+        var savedResult = resultService.save(result);
 
-        System.out.println("------> res: " + res);
+        logger.info("------> savedResult: {}", savedResult);
         return ResponseEntity.ok(result);
     }
 
@@ -51,13 +50,14 @@ public class CalcController {
     public ResponseEntity<Result> times(@RequestBody TwoArgs twoArgs) {
         var result = twoArgs.getFirst() * twoArgs.getSecond();
         var op = "*";
-        var rsl = new Result(result);
-        rsl.setId(1L);
-        rsl.setFirstArg(twoArgs.getFirst());
-        rsl.setSecondArg(twoArgs.getSecond());
-        rsl.setOperation(op);
-        rsl.setCreateDate(LocalDate.now());
-        System.out.println("------> rsl: " + rsl);
-        return ResponseEntity.ok(rsl);
+        var createdResult = new Result(result);
+        createdResult.setId(1L);
+        createdResult.setFirstArg(twoArgs.getFirst());
+        createdResult.setSecondArg(twoArgs.getSecond());
+        createdResult.setOperation(op);
+        createdResult.setCreateDate(LocalDate.now());
+        logger.debug("------> RESULT IS : {}", createdResult);
+
+        return ResponseEntity.ok(createdResult);
     }
 }

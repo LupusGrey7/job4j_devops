@@ -11,10 +11,11 @@ plugins {
     alias(libs.plugins.spotbugs) //Подключение SpotBugs для статического анализа кода
     alias(libs.plugins.liquibase.gradle) // Подключаем плагин Liquibase для работы с миграциями базы данных
     alias(libs.plugins.dotenv) // Подключаем плагин dotenv - для работы с переменными окружения
+    id("maven-publish") // Подключаем плагин для публикации артефактов
 }
 
 group = "ru.job4j.devops"
-version = "1.0.0"
+version = "1.0.1"
 
 // --- Конфигурация зависимостей Gradle для плагина Liquibase ---
 
@@ -23,9 +24,34 @@ buildscript {
         mavenLocal()
         mavenCentral()
         google()
+        maven {
+            url = uri("http://192.168.0.110:8081/repository/maven-public/")
+            isAllowInsecureProtocol = true
+        }
     }
     dependencies {
         classpath(libs.liquibase.core)
+    }
+}
+
+//--- Для публикации артефактов ---//
+//Когда Gradle завершает сборку проекта и генерирует артефакт, его можно автоматически отправить в Nexus с помощью задачи- publish
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            from(components["java"])
+            artifactId = "devops"  // Имя артефакта
+        }
+    }
+    repositories {
+        maven {
+            url = uri("http://192.168.0.110:8081/repository/maven-releases/")
+            isAllowInsecureProtocol = true
+            credentials {
+                username = "devops"
+                password = "password"
+            }
+        }
     }
 }
 
