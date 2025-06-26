@@ -7,11 +7,23 @@ build/
 !**/src/test/**/build/
 lib/*
 *.log
+*.log.*
+*.
+
+### Eclipse ###
+.eclipselink
+.eclipselink.xml
 
 ### Maven ###
 target/
 !**/src/main/**/target/
 !**/src/test/**/target/
+
+### Gradle ###
+#ENV
+#.env
+#env/.env.*
+# env/*
 
 ### STS ###
 .apt_generated
@@ -43,9 +55,3 @@ out/
 
 ### VS Code ###
 .vscode/
-
-### Gradle ###
-#ENV
-#.env
-#env/.env.*
-# env/*
