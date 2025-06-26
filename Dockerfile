@@ -2,46 +2,57 @@
 # 🔨 Этап сборки: используем Gradle с JDK 21
 FROM gradle:8.11.1-jdk21 AS builder
 
-# Создаём рабочую директорию
+# 1. Настройка рабочей директории- Создаём рабочую директорию
 WORKDIR /job4j_devops
 
-# 1. Копируем только необходимые для скачивания зависимостей файлы
+# 2. Копируем только необходимые для скачивания зависимостей файлы
 COPY gradle/libs.versions.toml ./gradle/libs.versions.toml
 COPY build.gradle.kts gradle.properties settings.gradle.kts ./
 
-# 2. Копируем исходники и конфиги
+# 3. Копируем исходники и конфиги
 COPY src ./src
 COPY config/checkstyle/checkstyle.xml ./config/checkstyle/checkstyle.xml
 
-# 3. Отключаем remote cache временно (если используется)
+# 4. Отключаем remote cache временно (если используется)
 RUN if [ -f settings.gradle.kts ]; then sed -i '/remote(HttpBuildCache::class)/,/}/d' settings.gradle.kts; fi
 
-# 4. Скачиваем зависимости (чтобы использовать слои докера)
+# 5. Скачиваем зависимости (чтобы использовать слои докера,для оптимизации кэширования Docker)
 RUN gradle --no-daemon dependencies
 
-# 5. Собираем проект без тестов и без checkstyle
+# 6. Собираем проект без тестов и без checkstyle
 RUN gradle --no-daemon build -x test -x checkstyleMain -x checkstyleTest -x integrationTest
 
-# 6. Проверка, что JAR-файл создан
+# 7. Проверка, что JAR-файл создан
 RUN ls -l build/libs/
 
-# 7. Анализ зависимостей JAR (для jlink)
+# 8. Анализ зависимостей JAR (для jlink)
 RUN jdeps --ignore-missing-deps -q \
     --recursive \
     --multi-release 21 \
     --print-module-deps \
-    --class-path 'BOOT-INF/lib/*' \
-    build/libs/DevOps-1.0.0.jar > deps.info
+    --class-path 'build/libs/*' \
+    build/libs/DevOps-*.jar > /tmp/jdeps-output.txt && \
+    cat /tmp/jdeps-output.txt && \
+    { [ -s /tmp/jdeps-output.txt ] && \
+      echo "Detected modules: $(cat /tmp/jdeps-output.txt)" && \
+      cp /tmp/jdeps-output.txt deps.info; } || \
+    { echo "Using fallback modules" && \
+      echo "java.base,jdk.crypto.ec,java.sql,java.management,jdk.unsupported" > deps.info; }
 
-# 8. Создаём slim JRE (с нужными модулями)
-RUN jlink \
-    --add-modules $(cat deps.info),jdk.crypto.ec,java.instrument,java.security.jgss,java.sql,java.management,java.naming,java.desktop,jdk.unsupported \
-    --strip-debug \
-    --compress 2 \
-    --no-header-files \
-    --no-man-pages \
-    --output /slim-jre
+# 8.1. Отладка - что действительно содержится в файле deps.info.
+RUN cat deps.info && echo "===="
 
+# 9. Создаём slim JRE (с нужными модулями)
+RUN export MODULES="$(cat deps.info),jdk.crypto.ec,java.instrument,java.security.jgss,java.sql,java.management,java.naming,java.desktop,jdk.unsupported" && \
+    jlink \
+      --add-modules "$MODULES" \
+      --strip-debug \
+      --compress 2 \
+      --no-header-files \
+      --no-man-pages \
+      --output /slim-jre
+
+# ==============================================
 # ✅ Финальный образ — минимальный и быстрый
 FROM debian:bookworm-slim
 
@@ -51,12 +62,12 @@ ENV PATH="$JAVA_HOME/bin:$PATH"
 
 # 10. Копируем JRE и JAR из builder-слоя
 COPY --from=builder /slim-jre $JAVA_HOME
-COPY --from=builder /job4j_devops/build/libs/DevOps-1.0.0.jar /job4j_devops/DevOps-1.0.0.jar
+COPY --from=builder /job4j_devops/build/libs/DevOps-1.0.1.jar /job4j_devops/DevOps-1.0.1.jar
 
 # 11. Настройки запуска
 WORKDIR /job4j_devops
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "DevOps-1.0.0.jar"]
+ENTRYPOINT ["java", "-jar", "DevOps-1.0.1.jar"]
 
 
 

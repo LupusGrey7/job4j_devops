@@ -1,5 +1,6 @@
 import java.io.FileInputStream
 import java.util.*
+import java.io.ByteArrayOutputStream
 
 // --- Plugins ---
 plugins {
@@ -145,12 +146,13 @@ dependencies {
     // Core
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.boot.starter.data.jpa)
-    implementation("org.springframework.boot:spring-boot-starter-actuator")
-    // Liquibase
-    implementation(libs.liquibase.core)
+    implementation(libs.spring.boot.starter.actuator)
+    implementation(libs.liquibase.core)     // Liquibase
     implementation(libs.postgresql)
     implementation(libs.h2)
     implementation(libs.spring.kafka)
+    implementation(libs.micrometer.prometheus)
+    implementation(libs.loki.logback) // Loki logger for grafana
     add("liquibaseRuntime", libs.liquibase.core)
     add("liquibaseRuntime", libs.postgresql)
     add("liquibaseRuntime", libs.h2)
@@ -159,8 +161,9 @@ dependencies {
     add("liquibaseRuntime", libs.logback.classic)
     add("liquibaseRuntime", libs.picocli)
 
-    // Lombok
-    compileOnly(libs.lombok)
+
+    compileOnly(libs.lombok)                // Lombok
+    compileOnly(libs.spotbugs.annotations) // Для main sourceSet
     annotationProcessor(libs.lombok)
 
     // Тестовые зависимости
@@ -172,9 +175,6 @@ dependencies {
     testImplementation(libs.awaitility)
     // Testcontainers core + JUnit 5 support (обязательно для аннотаций @Testcontainers, @Container)
     testImplementation(libs.testcontainers.junit.jupiter)
-
-    // Для main sourceSet
-    compileOnly(libs.spotbugs.annotations)
 
     // Для тестов (если нужно)
     testCompileOnly(libs.spotbugs.annotations)
@@ -188,7 +188,7 @@ dependencies {
     integrationTestImplementation(libs.testcontainers.kafka)
 }
 
-// --- Liquibase ---
+// --- Liquibase ---//
 // Liquibase runtime dependencies (настроим профиль для Liquibase)+ добавили ENV из файла .env.example для локального окружения (пример "DB_USERNAME")
 liquibase {
     activities.register("main") {
@@ -215,7 +215,7 @@ liquibase {
 }
 
 
-// --- Jacoco ---
+// --- Jacoco ---//
 
 tasks.jacocoTestCoverageVerification {
     violationRules {
@@ -237,7 +237,7 @@ tasks.jacocoTestCoverageVerification {
     }
 }
 
-// --- Тесты ---
+// --- Тесты ---//
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
@@ -269,12 +269,14 @@ tasks.withType<Test>().configureEach {
     }
 }
 
-// --- Liquibase  Tasks ---
+// --- Liquibase  Tasks ---//
 tasks.register("liquibaseUpdate") {
+    description = "Liquibase update"
+    group = "liquibase"
     dependsOn(tasks.named("update"))
 }
 
-// --- Интеграционные тесты ---
+// --- Интеграционные тесты ---//
 //отдельную задачу для запуска интеграционных тестов
 tasks.register<Test>("integrationTest") {
     description = "Runs integration tests"
@@ -323,7 +325,7 @@ tasks.register<Zip>("zipJavaDoc") {
     destinationDirectory.set(layout.buildDirectory.dir("archives"))
 }
 
-//задача для проверки размера JAR-файла
+//--- Задача для проверки размера JAR-файла ---
 tasks.register("checkJarSize") {
     group = "verification"
     description = "Checks the size of the generated JAR file"
@@ -364,7 +366,7 @@ tasks.register<Zip>("archiveResources") {
     }
 }
 
-// Связываем задачу(архивирования содержимое директории) с жизненным циклом (например, после сборки JAR)
+// --- Связываем задачу(архивирования содержимое директории) с жизненным циклом (например, после сборки JAR)
 tasks.named("jar") {
     finalizedBy("archiveResources")
 }
