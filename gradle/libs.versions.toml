@@ -23,11 +23,14 @@ testcontainers-kafka = "1.20.4"
 testcontainers-test = "1.20.4"
 testcontainers-junit = "1.20.4"
 awaitility = "4.3.0"
+micrometer = "1.11.2"
+loki4j = "1.6.0"
 
 [libraries] # — здесь описываются библиотеки и их версии.
 lombok = { group = "org.projectlombok", name = "lombok", version.ref = "lombok" }
 spring-boot-starter-web = { group = "org.springframework.boot", name = "spring-boot-starter-web", version.ref = "spring-boot" }
 spring-boot-starter-data-jpa = { group = "org.springframework.boot", name = "spring-boot-starter-data-jpa", version.ref = "spring-boot" }
+spring-boot-starter-actuator = { group = "org.springframework.boot", name = "spring-boot-starter-actuator", version.ref = "spring-boot" }
 spring-boot-starter-test = { group = "org.springframework.boot", name = "spring-boot-starter-test", version.ref = "spring-boot" }
 junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junit-jupiter" }
 assertj-core = { group = "org.assertj", name = "assertj-core", version.ref = "assertj" }
@@ -46,6 +49,8 @@ testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", ve
 spring-kafka = { group = "org.springframework.kafka", name = "spring-kafka", version.ref = "spring-kafka" }
 awaitility = { group = "org.awaitility", name = "awaitility", version.ref = "awaitility" }
 spotbugs-annotations = { group = "com.github.spotbugs", name = "spotbugs-annotations", version.ref = "spotbugs-annotations" }
+micrometer-prometheus = { group = "io.micrometer", name = "micrometer-registry-prometheus", version.ref = "micrometer" }
+loki-logback = { group = "com.github.loki4j", name = "loki-logback-appender", version.ref = "loki4j" }
 
 [bundles] # — здесь можно группировать несколько зависимостей вместе.
 # spring = ["spring-boot-starter-web", "spring-boot-starter-data-jpa"]

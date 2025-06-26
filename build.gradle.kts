@@ -1,5 +1,6 @@
 import java.io.FileInputStream
 import java.util.*
+import java.io.ByteArrayOutputStream
 
 // --- Plugins ---
 plugins {
@@ -11,10 +12,11 @@ plugins {
     alias(libs.plugins.spotbugs) //Подключение SpotBugs для статического анализа кода
     alias(libs.plugins.liquibase.gradle) // Подключаем плагин Liquibase для работы с миграциями базы данных
     alias(libs.plugins.dotenv) // Подключаем плагин dotenv - для работы с переменными окружения
+    id("maven-publish") // Подключаем плагин для публикации артефактов
 }
 
 group = "ru.job4j.devops"
-version = "1.0.0"
+version = "1.0.1"
 
 // --- Конфигурация зависимостей Gradle для плагина Liquibase ---
 
@@ -23,9 +25,34 @@ buildscript {
         mavenLocal()
         mavenCentral()
         google()
+        maven {
+            url = uri("http://192.168.0.110:8081/repository/maven-public/")
+            isAllowInsecureProtocol = true
+        }
     }
     dependencies {
         classpath(libs.liquibase.core)
+    }
+}
+
+//--- Для публикации артефактов ---//
+//Когда Gradle завершает сборку проекта и генерирует артефакт, его можно автоматически отправить в Nexus с помощью задачи- publish
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            from(components["java"])
+            artifactId = "devops"  // Имя артефакта
+        }
+    }
+    repositories {
+        maven {
+            url = uri("http://192.168.0.110:8081/repository/maven-releases/")
+            isAllowInsecureProtocol = true
+            credentials {
+                username = "devops"
+                password = "password"
+            }
+        }
     }
 }
 
@@ -60,7 +87,7 @@ tasks.register("validateEnv") {
             logger.warn("No .env file loaded. Using default database settings.")
         } else {
             logger.lifecycle("✅ Environment configuration:")
-            logger.lifecycle("   DB_URL=${envProperties.getProperty("DB_URL") ?: "default"}")
+            logger.lifecycle("   SPRING_DATASOURCE_URL=${envProperties.getProperty("SPRING_DATASOURCE_URL") ?: "default"}")
             logger.lifecycle("   DB_USER=${envProperties.getProperty("DB_USERNAME") ?: "default"}")
         }
     }
@@ -119,12 +146,13 @@ dependencies {
     // Core
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.boot.starter.data.jpa)
-
-    // Liquibase
-    implementation(libs.liquibase.core)
+    implementation(libs.spring.boot.starter.actuator)
+    implementation(libs.liquibase.core)     // Liquibase
     implementation(libs.postgresql)
     implementation(libs.h2)
     implementation(libs.spring.kafka)
+    implementation(libs.micrometer.prometheus)
+    implementation(libs.loki.logback) // Loki logger for grafana
     add("liquibaseRuntime", libs.liquibase.core)
     add("liquibaseRuntime", libs.postgresql)
     add("liquibaseRuntime", libs.h2)
@@ -133,8 +161,9 @@ dependencies {
     add("liquibaseRuntime", libs.logback.classic)
     add("liquibaseRuntime", libs.picocli)
 
-    // Lombok
-    compileOnly(libs.lombok)
+
+    compileOnly(libs.lombok)                // Lombok
+    compileOnly(libs.spotbugs.annotations) // Для main sourceSet
     annotationProcessor(libs.lombok)
 
     // Тестовые зависимости
@@ -146,9 +175,6 @@ dependencies {
     testImplementation(libs.awaitility)
     // Testcontainers core + JUnit 5 support (обязательно для аннотаций @Testcontainers, @Container)
     testImplementation(libs.testcontainers.junit.jupiter)
-
-    // Для main sourceSet
-    compileOnly(libs.spotbugs.annotations)
 
     // Для тестов (если нужно)
     testCompileOnly(libs.spotbugs.annotations)
@@ -162,11 +188,11 @@ dependencies {
     integrationTestImplementation(libs.testcontainers.kafka)
 }
 
-// --- Liquibase ---
+// --- Liquibase ---//
 // Liquibase runtime dependencies (настроим профиль для Liquibase)+ добавили ENV из файла .env.example для локального окружения (пример "DB_USERNAME")
 liquibase {
     activities.register("main") {
-        val dbUrl = envProperties.getProperty("DB_URL") ?: "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1"
+        val dbUrl = envProperties.getProperty("SPRING_DATASOURCE_URL") ?: "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1"
         val dbUser = envProperties.getProperty("DB_USERNAME") ?: "sa"
         val dbPass = envProperties.getProperty("DB_PASSWORD") ?: ""
         val changelogRelativePath = "db/changelog/db.changelog-master.xml"
@@ -189,7 +215,7 @@ liquibase {
 }
 
 
-// --- Jacoco ---
+// --- Jacoco ---//
 
 tasks.jacocoTestCoverageVerification {
     violationRules {
@@ -211,7 +237,7 @@ tasks.jacocoTestCoverageVerification {
     }
 }
 
-// --- Тесты ---
+// --- Тесты ---//
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
@@ -224,11 +250,11 @@ tasks.withType<Test>().configureEach {
     } else {
         systemProperty(
             "spring.datasource.url",
-            envProperties.getProperty("DB_URL") ?: "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1"
+            envProperties.getProperty("SPRING_DATASOURCE_URL") ?: "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1"
         )
         systemProperty(
             "spring.datasource.driver-class-name",
-            if (envProperties.getProperty("DB_URL")
+            if (envProperties.getProperty("SPRING_DATASOURCE_URL")
                     ?.contains("h2") == true
             ) "org.h2.Driver" else "org.postgresql.Driver"
         )
@@ -243,12 +269,14 @@ tasks.withType<Test>().configureEach {
     }
 }
 
-// --- Liquibase  Tasks ---
+// --- Liquibase  Tasks ---//
 tasks.register("liquibaseUpdate") {
+    description = "Liquibase update"
+    group = "liquibase"
     dependsOn(tasks.named("update"))
 }
 
-// --- Интеграционные тесты ---
+// --- Интеграционные тесты ---//
 //отдельную задачу для запуска интеграционных тестов
 tasks.register<Test>("integrationTest") {
     description = "Runs integration tests"
@@ -297,7 +325,7 @@ tasks.register<Zip>("zipJavaDoc") {
     destinationDirectory.set(layout.buildDirectory.dir("archives"))
 }
 
-//задача для проверки размера JAR-файла
+//--- Задача для проверки размера JAR-файла ---
 tasks.register("checkJarSize") {
     group = "verification"
     description = "Checks the size of the generated JAR file"
@@ -338,7 +366,7 @@ tasks.register<Zip>("archiveResources") {
     }
 }
 
-// Связываем задачу(архивирования содержимое директории) с жизненным циклом (например, после сборки JAR)
+// --- Связываем задачу(архивирования содержимое директории) с жизненным циклом (например, после сборки JAR)
 tasks.named("jar") {
     finalizedBy("archiveResources")
 }
@@ -366,7 +394,7 @@ tasks.register("profile") {
             ?: project.property("springProfilesActive") ?: "default"
 
         logger.lifecycle("Active profile: $activeProfile")
-        logger.lifecycle("DB_URL: ${envProperties.getProperty("DB_URL") ?: "default"}")
+        logger.lifecycle("SPRING_DATASOURCE_URL: ${envProperties.getProperty("SPRING_DATASOURCE_URL") ?: "default"}")
         logger.lifecycle("DB_USERNAME: ${envProperties.getProperty("DB_USERNAME") ?: "default"}")
         logger.lifecycle("DB_PASSWORD: ${envProperties.getProperty("DB_PASSWORD") ?: "default"}")
     }
@@ -375,9 +403,21 @@ tasks.register("profile") {
 tasks.test {
     useJUnitPlatform()
     systemProperty("spring.profiles.active", "test") // 🟢 активируем профиль test
-    systemProperty("ENV", "test") // Для dotenv плагина
-    systemProperty("spring.datasource.url", "jdbc:h2:mem:testdb")
-    systemProperty("spring.datasource.driver-class-name", "org.h2.Driver")
+    systemProperty("ENV", "test") // Чтобы dotenv взял .env.test
+//    systemProperty("spring.datasource.url", "jdbc:h2:mem:testdb")
+//    systemProperty("spring.datasource.driver-class-name", "org.h2.Driver")
+    val envFile = file("env/.env.test").takeIf { it.exists() }
+        ?: file("env/.env.example").takeIf { it.exists() }
+
+    if (envFile != null) {
+        println("✅ Load .env-file: ${envFile.name}")
+        envFile.inputStream().use { envProperties.load(it) }
+    }
+
+    // 💡 Важно: пробрасываем каждую переменную в систему JVM
+    envProperties.forEach { (key, value) ->
+        systemProperty(key.toString(), value.toString())
+    }
 }
 
 // -----Integration Test Task ----//
@@ -398,22 +438,22 @@ tasks.named<ProcessResources>("processIntegrationTestResources") {
 // Логгируем активные переменные среды при сборке
 // ----------------------------------------------
 gradle.taskGraph.whenReady {
-    val env = System.getenv("ENV") ?: "local" // или "develop" по умолчанию, если нужно
+//    val env = System.getenv("ENV") ?: "local" // или "develop" по умолчанию, если нужно
+//
+//    val envFile = file("env/.env.$env").takeIf { it.exists() }
+//        ?: file("env/.env.example").takeIf { it.exists() }
+//
+//    val props = Properties()
+//
+//    if (envFile != null) {
+//        println("✅ Load .env-file: ${envFile.name}")
+//        envFile.inputStream().use { props.load(it) }
+//    } else {
+//        println("⚠️ .env-file not founded (ENV=$env)")
+//    }
 
-    val envFile = file("env/.env.$env").takeIf { it.exists() }
-        ?: file("env/.env.example").takeIf { it.exists() }
-
-    val props = Properties()
-
-    if (envFile != null) {
-        println("✅ Load .env-file: ${envFile.name}")
-        envFile.inputStream().use { props.load(it) }
-    } else {
-        println("⚠️ .env-file not founded (ENV=$env)")
-    }
-
-    val springProfile = props.getProperty("SPRING_PROFILES_ACTIVE") ?: "not installed" //не установлен
-    val datasourceUrl = props.getProperty("SPRING_DATASOURCE_URL") ?: "not specified" // не указан
+    val springProfile = envProperties.getProperty("SPRING_PROFILES_ACTIVE") ?: "not installed" //не установлен
+    val datasourceUrl = envProperties.getProperty("SPRING_DATASOURCE_URL") ?: "not specified" // не указан
     val dbType = when {
         "h2" in datasourceUrl.lowercase() -> "H2"
         "postgres" in datasourceUrl.lowercase() -> "PostgreSQL"
@@ -429,4 +469,3 @@ gradle.taskGraph.whenReady {
     println("========================================")
     println()
 }
-

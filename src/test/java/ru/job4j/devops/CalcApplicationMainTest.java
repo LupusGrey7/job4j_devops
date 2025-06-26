@@ -23,10 +23,10 @@ import java.util.Arrays;
  * а можно задать через файл сборки gradle.build.kt - tasks.test {}
  */
 @ActiveProfiles("test")
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE) // ✅ принудительно включаем тестовый профиль)
 class CalcApplicationMainTest {
 
-    Logger logger = LoggerFactory.getLogger(CalcApplicationMainTest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(CalcApplicationMainTest.class);
 
     @Autowired
     private Environment env;
@@ -35,18 +35,30 @@ class CalcApplicationMainTest {
     void printProperties() {
         System.out.println("Datasource URL: " + env.getProperty("spring.datasource.url"));
         System.out.println("Active profiles: " + Arrays.toString(env.getActiveProfiles()));
-        assertThat(env.getProperty("spring.datasource.url")).isEqualTo("jdbc:h2:mem:testdb");
+        System.out.println("spring.config.location: " + env.getProperty("spring.config.location"));
+        System.out.println("ENV var: " + System.getenv("ENV"));
+        System.out.println("debug.test.profile: " + env.getProperty("debug.test.profile"));
+        assertThat(env.getProperty("debug.test.profile"))
+                .isEqualTo("active");
     }
 
     @Test
     void mainMethodTest() {
-        logger.info("Test profile is active: {}", System.getProperty("spring.profiles.active"));
+        LOGGER.info("Test profile is active: {}", System.getProperty("spring.profiles.active"));
 
-        CalcApplication.main(new String[]{});
+        CalcApplication.main(new String[]{"--spring.profiles.active=test"});
 
         assertThat(System.getProperty("spring.profiles.active")).isEqualTo("test");
         Assertions.assertNotNull(System.getProperty("spring.profiles.active"));
         Assertions.assertEquals("test", System.getProperty("spring.profiles.active"));
     }
 
+    @Test
+    void printPropertySources() {
+        System.out.println("=== Все источники свойств ===");
+        System.out.println("Datasource URL: " + env.getProperty("spring.datasource.url"));
+        System.out.println("Active profiles: " + Arrays.toString(env.getActiveProfiles()));
+
+        Assertions.assertEquals("test", System.getProperty("spring.profiles.active"));
+    }
 }

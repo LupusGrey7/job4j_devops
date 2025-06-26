@@ -23,12 +23,12 @@ pipeline {
 //         GRADLE_REMOTE_CACHE_USERNAME = "${env.GRADLE_REMOTE_CACHE_USERNAME}"
 //         GRADLE_REMOTE_CACHE_PASSWORD = "${env.GRADLE_REMOTE_CACHE_PASSWORD}"
         // 5.URL кэша из системных переменных Jenkins (если задан)
-        GRADLE_REMOTE_CACHE_URL = "${env.GRADLE_REMOTE_CACHE_URL ?: 'http://192.168.0.109:5071/'}"  // Без /cache/
+        GRADLE_REMOTE_CACHE_URL = "${env.GRADLE_REMOTE_CACHE_URL ?: 'http://192.168.0.110:5071/'}"  // Без /cache/
     }
 
     tools {
         git 'Default'
-       // jdk 'jdk-21' // Явно указываем JDK
+       // jdk 'jdk-21' //или Явно указываем JDK
     }
 
     stages {
@@ -132,8 +132,82 @@ pipeline {
                  }
              }
         }
-    }
+        // Скрипт для бэкапа базы данных - опционально (db_backup.sh)
+        stage('Database Backup') {
+            when {
+                expression { return ['develop', 'staging', 'production'].contains(params.ENV) }
+            }
+            steps {
+                script {
+                    def dotenvPath = "${env.DOTENV_BASE_DIR}/.env.${params.ENV}"
 
+                    // Загружаем переменные DB_* из .env файла
+                    def dbVars = sh(
+                        script: "set -a && source ${dotenvPath} && env | grep ^DB_ || true",
+                        returnStdout: true
+                    ).trim().split("\n").collectEntries {
+                        def (k, v) = it.tokenize("=")
+                        [(k): v]
+                    }
+
+                    def dbHost = dbVars["DB_HOST"] ?: "localhost"
+                    def dbUser = dbVars["DB_USERNAME"] ?: "postgres"
+                    def dbPass = dbVars["DB_PASSWORD"] ?: error("❌ DB_PASSWORD not found in .env")
+                    def dbName = dbVars["DB_NAME"] ?: "job4j_devops"
+                    def backupDir = dbVars["BACKUP_DIR"] ?: "/var/jenkins_home/backups/postgresql"
+
+                    // Логгируем
+                    echo "🔁 Starting backup of DB: ${dbName} on host: ${dbHost}"
+
+                    // Убедимся, что скрипт исполняемый
+                    sh 'chmod +x ./scripts/db_backup.sh'
+
+                    // Проверка утилит
+                    sh '''
+                        which pg_dump || { echo "❌ pg_dump not found!"; exit 1; }
+                        which gzip || { echo "❌ gzip not found!"; exit 1; }
+                    '''
+
+                    // Создаём каталог
+                    sh "mkdir -p ${backupDir}"
+
+                    // Запуск бэкапа с переменными окружения
+                    sh """
+                        DB_HOST='${dbHost}' \
+                        DB_USERNAME='${dbUser}' \
+                        DB_PASSWORD='${dbPass}' \
+                        DB_NAME='${dbName}' \
+                        BACKUP_DIR='${backupDir}' \
+                        ./scripts/db_backup.sh
+
+                        echo "📦 Backup result:"
+                        ls -la ${backupDir} | grep ${dbName}
+                    """
+
+                    // Telegram уведомление
+                    telegramSend """
+                    ✅ BACKUP SUCCESS:
+                    Project: ${env.JOB_NAME}
+                    Build: #${env.BUILD_NUMBER}
+                    Database: ${dbName}
+                    Backup Dir: ${backupDir}
+                    """
+                }
+            }
+            post {
+                failure {
+                    script {
+                        telegramSend """
+                        ❌ BACKUP FAILED:
+                        Project: ${env.JOB_NAME}
+                        Build: #${env.BUILD_NUMBER}
+                        Check logs for details.
+                        """
+                    }
+                }
+            }
+        }
+    }
     // Добавляем блок post для отправки уведомлений в Telegram
     post {
         always {
